@@ -22,7 +22,6 @@ jobs:
 
   package:
     needs: test
-    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
