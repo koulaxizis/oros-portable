@@ -62,6 +62,9 @@ for os in windows linux; do
     while read -r f; do cp "$f" "$FULL/LICENSES/ungoogled-chromium-$os-$(basename "$f")"; done
 done
 
+cat "$OUT/SOURCES.txt"
+ls "$FULL/LICENSES"
+
 echo "== zips"
 (cd "$OUT" && zip -qry "orOS-Portable-$VERSION.zip" orOS-Portable && zip -qry "orOS-Portable-lite-$VERSION.zip" orOS-Portable-lite)
 ls -lh "$OUT"/*.zip
