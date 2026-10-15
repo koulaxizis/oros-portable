@@ -62,4 +62,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" out/*.zip out/SOURCES.txt out/sticktest/* out/src/* --title "orOS Portable $GITHUB_REF_NAME" --notes-file dist-extra/README.txt
+        run: gh release create "$GITHUB_REF_NAME" out/*.zip out/SOURCES.txt out/sticktest/* out/src/* --title "orOS Portable $GITHUB_REF_NAME" --notes-file dist-extra/RELEASE-NOTES.md

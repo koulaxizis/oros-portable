@@ -2,6 +2,17 @@
 
 Run [orOS](https://useoros.online) from a USB stick on any Windows or Linux PC, with or without internet. MIT, free forever.
 
+## Which edition?
+
+| | **Full** (`orOS-Portable`) | **Lite** (`orOS-Portable-lite`) |
+|---|---|---|
+| Size | ~455 MB download, 1–1.5 GB on the stick | ~36 MB |
+| Browser | bundled ungoogled-chromium (Windows + Linux) | an installed Chromium, Brave, Edge or Chrome |
+| Works on | any Windows 10/11 or 64-bit Linux PC | Windows (Edge); Linux only with a Chromium-family browser |
+| Google / Microsoft | none | often runs inside Edge or Chrome |
+
+Not sure? Take the full edition. Both run from the stick and keep data on it. Stick: 32 GB or more recommended (64 GB ideal), 8 GB minimum, formatted as exFAT. The release page has the same table in Greek.
+
 ## How it works
 
 The stick holds a small launcher (`orOS.exe` / `orOS`), the orOS web app (`app/`) and, in the full edition, a portable [ungoogled-chromium](https://github.com/ungoogled-software/ungoogled-chromium) (`browser/`). The launcher:
