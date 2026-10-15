@@ -59,4 +59,4 @@ parts inside ungoogled-chromium.
 
 ## Licences
 
-orOS Portable: MIT. ungoogled-chromium: BSD-3-Clause, with LGPL and other open-source components (its licence files ship inside `browser/` and are copied to `LICENSES/`; the full list is at `chrome://credits`). Sources: `SOURCES.txt`, written offer: `WRITTEN-OFFER.txt`.
+orOS Portable: MIT. ungoogled-chromium: BSD-3-Clause, with LGPL and other open-source components (top-level licences in `LICENSES/`; the full component list is at `chrome://credits` in the bundled browser). Sources: `SOURCES.txt`, written offer: `WRITTEN-OFFER.txt`.

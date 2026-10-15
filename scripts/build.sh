@@ -57,10 +57,19 @@ for dir in "$LITE" "$FULL"; do
   if [ -f "$dir/app/LICENSE" ]; then cp "$dir/app/LICENSE" "$dir/LICENSES/orOS-MIT.txt"; fi
   cp "$OUT/SOURCES.txt" "$dir/SOURCES.txt"
 done
-for os in windows linux; do
-  find "$FULL/browser/$os" -maxdepth 1 -type f \( -iname '*licen*' -o -iname '*copying*' -o -iname 'credits*' \) |
-    while read -r f; do cp "$f" "$FULL/LICENSES/ungoogled-chromium-$os-$(basename "$f")"; done
-done
+# The browser packages carry no licence files of their own (the full list of
+# Chromium's components is built in at chrome://credits), so fetch the two
+# top-level licences for this exact version.
+CHROMIUM="${LIN_TAG%%-*}"
+UG_TAG="$(echo "$LIN_TAG" | cut -d- -f1-2)"
+curl -fsSL --retry 3 "https://raw.githubusercontent.com/ungoogled-software/ungoogled-chromium/$UG_TAG/LICENSE" \
+  -o "$FULL/LICENSES/ungoogled-chromium-BSD.txt"
+curl -fsSL --retry 3 "https://chromium.googlesource.com/chromium/src/+/refs/tags/$CHROMIUM/LICENSE?format=TEXT" |
+  base64 -d > "$FULL/LICENSES/Chromium-BSD.txt"
+grep -q "Copyright" "$FULL/LICENSES/Chromium-BSD.txt"
+printf '%s\n' "The complete list of the open-source components inside the browser, with" \
+  "their licences, is built into it: open chrome://credits in the bundled browser." \
+  > "$FULL/LICENSES/Chromium-components.txt"
 
 cat "$OUT/SOURCES.txt"
 ls "$FULL/LICENSES"
