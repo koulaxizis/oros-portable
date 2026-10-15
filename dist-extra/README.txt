@@ -10,7 +10,7 @@ you remove the stick. To get the newest orOS, connect to the internet and run
 "Update orOS.cmd" (Windows) or update-oros.sh (Linux).
 Encrypted Dropbox sync works as on useoros.online once you are online, and
 joins the data on the stick with your other devices.
-The full edition carries ungoogled-chromium (BSD licence, see browser/*/LICENSE).
+The full edition carries ungoogled-chromium (BSD licence, see the LICENSES folder).
 The lite edition uses an installed Chromium, Brave, Edge or Chrome.
 
 EL
@@ -22,7 +22,10 @@ EL
 το "Update orOS.cmd" (Windows) ή το update-oros.sh (Linux).
 Το κρυπτογραφημένο Dropbox sync δουλεύει όπως στο useoros.online όταν έχεις
 internet, και ενώνει τα δεδομένα του USB με τις άλλες συσκευές σου.
-Η πλήρης έκδοση έχει μέσα το ungoogled-chromium (άδεια BSD, βλ. browser/*/LICENSE).
+Η πλήρης έκδοση έχει μέσα το ungoogled-chromium (άδεια BSD, βλ. φάκελο LICENSES).
 Η lite έκδοση χρησιμοποιεί εγκατεστημένο Chromium, Brave, Edge ή Chrome.
+
+Licences: LICENSES folder. Source code: SOURCES.txt and WRITTEN-OFFER.txt.
+Άδειες: φάκελος LICENSES. Πηγαίος κώδικας: SOURCES.txt και WRITTEN-OFFER.txt.
 
 MIT licence, free forever. https://github.com/koulaxizis/oros-portable
