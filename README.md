@@ -26,7 +26,29 @@ The lite edition has no bundled browser and uses an installed Chromium, Brave, E
 
 ## Building
 
-`scripts/build.sh <version>` builds both editions into `out/`. CI (`.github/workflows/build.yml`) runs the Go tests on every push and PR, uploads the zips as a workflow artifact on `main`, and publishes a GitHub release for `v*` tags.
+`scripts/build.sh <version>` builds both editions into `out/`, `scripts/build-sticktest.sh` the stick test, and `scripts/fetch-sources.sh` collects the source archives for a release. CI (`.github/workflows/build.yml`) runs the Go tests on every push and PR, uploads the zips as a workflow artifact on `main`, and publishes a GitHub release for `v*` tags.
+
+## Making sticks
+
+orOS stays free; a stick only saves people the download and setup. Every
+build carries `LICENSES/`, `SOURCES.txt` (the exact source of every program)
+and `WRITTEN-OFFER.txt`, and a tagged release attaches the third-party source
+archives, so copies sold on sticks meet the source terms of the GPL/LGPL
+parts inside ungoogled-chromium.
+
+- `sudo scripts/make-sticks.sh orOS-Portable-<version>.zip /dev/sdb /dev/sdc ...`
+  erases each stick, makes one exFAT partition named `OROS`, copies the full
+  edition, then re-reads every file from the stick and checks it against
+  `SHA256SUMS.txt`. It writes all sticks in parallel (a powered USB hub helps)
+  and refuses anything that is not a removable USB disk up to 256 GB, or that
+  holds a system mount. It asks you to type `ERASE` first. Linux only; needs
+  `exfatprogs`. `scripts/test-make-sticks.sh` tests it on loop devices (CI).
+- `orOS-sticktest` (release asset, Windows and Linux) checks whether a stick
+  is fast enough: copy it onto the stick and run it there. It measures
+  sequential write/read, random 4 KiB writes that wait for the disk (what the
+  browser profile does all day) and small-file creation, gives a verdict, and
+  appends the numbers to `sticktest-results.txt` on the stick. Use it to pick a
+  stick model from samples; it does not measure how long the flash will last.
 
 ## Notes
 
@@ -37,4 +59,4 @@ The lite edition has no bundled browser and uses an installed Chromium, Brave, E
 
 ## Licences
 
-orOS Portable: MIT. ungoogled-chromium: BSD-3-Clause (its licence files ship inside `browser/`).
+orOS Portable: MIT. ungoogled-chromium: BSD-3-Clause, with LGPL and other open-source components (its licence files ship inside `browser/` and are copied to `LICENSES/`; the full list is at `chrome://credits`). Sources: `SOURCES.txt`, written offer: `WRITTEN-OFFER.txt`.

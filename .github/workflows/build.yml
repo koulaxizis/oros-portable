@@ -19,6 +19,13 @@ jobs:
         with:
           go-version: "1.22"
       - run: cd launcher && go vet ./... && go test ./...
+      - run: cd tools/sticktest && go vet ./... && go test ./...
+      - name: Stick script test (loop devices)
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q exfatprogs exfat-fuse
+          # Use the kernel driver when present, else the FUSE one.
+          sudo modprobe exfat || sudo ln -sf /sbin/mount.exfat-fuse /sbin/mount.exfat
+          sudo scripts/test-make-sticks.sh
 
   package:
     needs: test
@@ -35,13 +42,24 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           case "$GITHUB_REF" in refs/tags/*) ;; *) VERSION="0.0.0-${GITHUB_SHA::7}";; esac
           scripts/build.sh "$VERSION"
+          scripts/build-sticktest.sh "$VERSION"
+      - name: Sources
+        # Tags only (several GB of downloads); a manual run tests the step.
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/fetch-sources.sh
       - uses: actions/upload-artifact@v4
         with:
           name: orOS-Portable
-          path: out/*.zip
+          path: |
+            out/*.zip
+            out/SOURCES.txt
+            out/sticktest/*
+            out/src/SHA256SUMS-src.txt
           retention-days: 14
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" out/*.zip --title "orOS Portable $GITHUB_REF_NAME" --notes-file dist-extra/README.txt
+        run: gh release create "$GITHUB_REF_NAME" out/*.zip out/SOURCES.txt out/sticktest/* out/src/* --title "orOS Portable $GITHUB_REF_NAME" --notes-file dist-extra/README.txt

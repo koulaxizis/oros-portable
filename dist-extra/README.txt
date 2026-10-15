@@ -25,4 +25,7 @@ internet, και ενώνει τα δεδομένα του USB με τις άλ�
 Η πλήρης έκδοση έχει μέσα το ungoogled-chromium (άδεια BSD, βλ. browser/*/LICENSE).
 Η lite έκδοση χρησιμοποιεί εγκατεστημένο Chromium, Brave, Edge ή Chrome.
 
+Licences: LICENSES folder. Source code: SOURCES.txt and WRITTEN-OFFER.txt.
+Άδειες: φάκελος LICENSES. Πηγαίος κώδικας: SOURCES.txt και WRITTEN-OFFER.txt.
+
 MIT licence, free forever. https://github.com/koulaxizis/oros-portable

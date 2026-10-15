@@ -1,0 +1,28 @@
+Written offer for source code
+=============================
+
+EN
+This orOS Portable copy contains programs under the GNU GPL and LGPL (inside
+ungoogled-chromium) and other free licences. SOURCES.txt lists the exact source
+of every program, and the release page carries copies of the third-party
+source archives.
+
+For at least three years after the last sale or distribution of this version,
+Christos Koulaxizis offers any third party a complete machine-readable copy of
+the corresponding source code, on a medium customarily used for software
+interchange, for a charge no more than the cost of physically performing the
+distribution. Ask by opening an issue at
+  https://github.com/koulaxizis/oros-portable/issues
+and name the version written in SOURCES.txt.
+
+EL
+Αυτό το αντίγραφο του orOS Portable περιέχει προγράμματα με άδειες GNU GPL και
+LGPL (μέσα στο ungoogled-chromium) και άλλες ελεύθερες άδειες. Το SOURCES.txt
+δείχνει τον ακριβή πηγαίο κώδικα κάθε προγράμματος, και η σελίδα του release
+έχει αντίγραφα των πηγαίων αρχείων.
+
+Για τουλάχιστον τρία χρόνια μετά την τελευταία πώληση ή διανομή αυτής της
+έκδοσης, ο Christos Koulaxizis δίνει σε οποιονδήποτε πλήρες αντίγραφο του
+αντίστοιχου πηγαίου κώδικα, σε συνηθισμένο μέσο ανταλλαγής λογισμικού, με
+χρέωση όχι μεγαλύτερη από το κόστος της αποστολής. Το ζητάς ανοίγοντας ένα
+issue στο παραπάνω σύνδεσμο, με την έκδοση που γράφει το SOURCES.txt.
