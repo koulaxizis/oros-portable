@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -126,5 +127,21 @@ func TestSwapKeepsPreviousVersion(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(filepath.Join(root, "app.old", "v")); string(b) != "1" {
 		t.Fatalf("app.old has %q", b)
+	}
+}
+
+func TestProfileInUse(t *testing.T) {
+	dir := t.TempDir()
+	if profileInUse(dir) {
+		t.Fatal("empty profile reported in use")
+	}
+	must(t, os.Symlink(fmt.Sprintf("host-%d", os.Getpid()), filepath.Join(dir, "SingletonLock")))
+	if !profileInUse(dir) {
+		t.Fatal("live lock not seen")
+	}
+	must(t, os.Remove(filepath.Join(dir, "SingletonLock")))
+	must(t, os.Symlink("host-999999999", filepath.Join(dir, "SingletonLock")))
+	if profileInUse(dir) {
+		t.Fatal("stale lock reported in use")
 	}
 }
