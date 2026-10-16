@@ -22,9 +22,7 @@ jobs:
       - run: cd tools/sticktest && go vet ./... && go test ./...
       - name: Stick script test (loop devices)
         run: |
-          sudo apt-get update -q && sudo apt-get install -y -q exfatprogs exfat-fuse
-          # Use the kernel driver when present, else the FUSE one.
-          sudo modprobe exfat || sudo ln -sf /sbin/mount.exfat-fuse /sbin/mount.exfat
+          sudo apt-get update -q && sudo apt-get install -y -q ntfs-3g
           sudo scripts/test-make-sticks.sh
 
   package:

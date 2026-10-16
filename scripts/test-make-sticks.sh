@@ -30,6 +30,8 @@ part="${DEVS[0]}p1"
 [ "$(blkid -o value -s LABEL "$part")" = OROS ] || { echo "label missing"; exit 1; }
 mount "$part" "$T/m"
 grep -q "Σημειώσεις.txt" "$T/m/SHA256SUMS.txt"
+# The browser profile needs symbolic links on Linux.
+ln -s oros "$T/m/link-test" && rm "$T/m/link-test" || { echo "stick cannot hold symlinks"; exit 1; }
 echo tampered >> "$T/m/app/apps/big.bin"
 if (cd "$T/m" && sha256sum --quiet -c SHA256SUMS.txt) >/dev/null 2>&1; then
   echo "tampering not detected"; exit 1

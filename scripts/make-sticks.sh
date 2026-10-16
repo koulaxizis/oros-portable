@@ -8,9 +8,11 @@
 #   --yes   skip the typed confirmation (for scripted runs)
 #   --label volume name, default OROS (max 11 characters)
 #
-# Each stick gets one MBR partition formatted as exFAT (Windows and Linux can
-# both run programs from it), the orOS Portable files and SHA256SUMS.txt.
-# Needs: sfdisk, wipefs, mkfs.exfat (exfatprogs), unzip, sha256sum.
+# Each stick gets one MBR partition formatted as NTFS (Windows and Linux can
+# both run programs from it, and on Linux the browser needs the symbolic
+# links that exFAT and FAT cannot store), the orOS Portable files and
+# SHA256SUMS.txt.
+# Needs: sfdisk, wipefs, mkntfs (ntfs-3g), unzip, sha256sum.
 set -euo pipefail
 
 YES="" LABEL="OROS" ALLOW_ANY="${OROS_STICKS_ALLOW_ANY:-}"
@@ -24,7 +26,7 @@ while [ $# -gt 0 ]; do
 done
 [ $# -ge 2 ] || { sed -n '2,15p' "$0"; exit 2; }
 [ "$(id -u)" = 0 ] || { echo "run as root (sudo)"; exit 2; }
-for cmd in sfdisk wipefs mkfs.exfat unzip sha256sum lsblk; do
+for cmd in sfdisk wipefs mkntfs unzip sha256sum lsblk; do
   command -v "$cmd" >/dev/null || { echo "missing $cmd"; exit 2; }
 done
 [ ${#LABEL} -le 11 ] || { echo "label longer than 11 characters"; exit 2; }
@@ -88,7 +90,7 @@ write_one() { # device log
   udevadm settle 2>/dev/null || true
   for _ in $(seq 50); do [ -b "$part" ] && break; sleep 0.1; done
   [ -b "$part" ] || { echo "no partition node $part"; return 1; }
-  mkfs.exfat -q -L "$LABEL" "$part" >/dev/null
+  mkntfs -Q -q -L "$LABEL" "$part" >/dev/null
   mount "$part" "$mnt"
   cp -r "$FILES"/. "$mnt"/
   cp "$WORK/SHA256SUMS.txt" "$mnt/SHA256SUMS.txt"

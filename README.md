@@ -11,7 +11,7 @@ Run [orOS](https://useoros.online) from a USB stick on any Windows or Linux PC, 
 | Works on | any Windows 10/11 or 64-bit Linux PC | Windows (Edge); Linux only with a Chromium-family browser |
 | Google / Microsoft | none | often runs inside Edge or Chrome |
 
-Not sure? Take the full edition. Both run from the stick and keep data on it. Stick: 32 GB or more recommended (64 GB ideal), 8 GB minimum, formatted as exFAT. The release page has the same table in Greek.
+Not sure? Take the full edition. Both run from the stick and keep data on it. Stick: 32 GB or more recommended (64 GB ideal), 8 GB minimum, formatted as NTFS. The release page has the same table in Greek.
 
 ## How it works
 
@@ -48,12 +48,12 @@ archives, so copies sold on sticks meet the source terms of the GPL/LGPL
 parts inside ungoogled-chromium.
 
 - `sudo scripts/make-sticks.sh orOS-Portable-<version>.zip /dev/sdb /dev/sdc ...`
-  erases each stick, makes one exFAT partition named `OROS`, copies the full
+  erases each stick, makes one NTFS partition named `OROS`, copies the full
   edition, then re-reads every file from the stick and checks it against
   `SHA256SUMS.txt`. It writes all sticks in parallel (a powered USB hub helps)
   and refuses anything that is not a removable USB disk up to 256 GB, or that
   holds a system mount. It asks you to type `ERASE` first. Linux only; needs
-  `exfatprogs`. `scripts/test-make-sticks.sh` tests it on loop devices (CI).
+  `ntfs-3g`. `scripts/test-make-sticks.sh` tests it on loop devices (CI).
 - `orOS-sticktest` (release asset, Windows and Linux) checks whether a stick
   is fast enough: copy it onto the stick and run it there. It measures
   sequential write/read, random 4 KiB writes that wait for the disk (what the
@@ -63,7 +63,7 @@ parts inside ungoogled-chromium.
 
 ## Notes
 
-- Linux: format the stick as exFAT or NTFS. FAT32 mounts without execute permission, so the launcher cannot run from it.
+- Format the stick as NTFS. On Linux the browser locks its profile with symbolic links, which exFAT and FAT32 cannot store (the launcher then says so), and FAT32 also mounts without execute permission. Windows runs from any of them.
 - The Windows launcher is not code-signed, so SmartScreen warns on first run ("More info" → "Run anyway").
 - Close the orOS window before removing the stick; pulling it out while the browser writes can corrupt the profile.
 - Dropbox sign-in returns to `http://localhost:47800/`, which must be listed as a redirect URI in the orOS Dropbox app.

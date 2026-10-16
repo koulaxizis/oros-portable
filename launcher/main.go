@@ -99,6 +99,10 @@ func run(root string) {
 	if _, err := os.Stat(filepath.Join(appDir, "index.html")); err != nil {
 		fail("The app folder is missing next to the launcher: " + appDir)
 	}
+	if err := profileDirUsable(filepath.Join(root, "data")); err != nil {
+		log.Printf("profile folder: %v", err)
+		fail("This stick's format (exFAT or FAT32) cannot hold the browser's data on Linux. Format the stick as NTFS and copy orOS Portable to it again; on Windows it works as it is.")
+	}
 
 	srv, err := startServer(appDir)
 	if err != nil {
