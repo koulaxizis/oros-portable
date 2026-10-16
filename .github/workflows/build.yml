@@ -6,6 +6,11 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to create on this commit, e.g. v0.1.0 (empty: test build only)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -36,9 +41,11 @@ jobs:
       - name: Build
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           case "$GITHUB_REF" in refs/tags/*) ;; *) VERSION="0.0.0-${GITHUB_SHA::7}";; esac
+          if [ -n "$TAG" ]; then VERSION="${TAG#v}"; fi
           scripts/build.sh "$VERSION"
           scripts/build-sticktest.sh "$VERSION"
       - name: Sources
@@ -57,7 +64,12 @@ jobs:
             out/src/SHA256SUMS-src.txt
           retention-days: 14
       - name: Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        # A tag push, or a manual run with a tag (the tag is then created
+        # on the commit that was built).
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" out/*.zip out/SOURCES.txt out/sticktest/* out/src/* --title "orOS Portable $GITHUB_REF_NAME" --notes-file dist-extra/RELEASE-NOTES.md
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          case "$TAG" in v[0-9]*) ;; *) echo "bad tag: $TAG"; exit 1;; esac
+          gh release create "$TAG" --target "$GITHUB_SHA" out/*.zip out/SOURCES.txt out/sticktest/* out/src/* --title "orOS Portable $TAG" --notes-file dist-extra/RELEASE-NOTES.md
