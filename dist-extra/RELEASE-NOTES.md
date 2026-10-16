@@ -12,7 +12,7 @@ Run [orOS](https://useoros.online) from a USB stick on any Windows or Linux PC, 
 
 **Not sure? Take the full edition.** Pick lite only for a small download or a small stick. Both run from the stick and keep your data on it.
 
-**Stick size:** 32 GB or more recommended (64 GB is ideal and usually faster); 8 GB is the minimum. Format the stick as **exFAT**, unzip, and copy everything inside the `orOS-Portable` folder to the stick. Then double-click `orOS.exe` (Windows) or run `./orOS` (Linux).
+**Stick size:** 32 GB or more recommended (64 GB is ideal and usually faster); 8 GB is the minimum. Format the stick as **NTFS** (on Linux, exFAT and FAT32 cannot hold the browser's data), unzip, and copy everything inside the `orOS-Portable` folder to the stick. Then double-click `orOS.exe` (Windows) or run `./orOS` (Linux).
 
 `orOS-sticktest-*`: optional speed test. Copy it onto a stick and run it there to see whether the stick is fast enough. Files ending in `-src` and `SOURCES.txt`: the source code of everything in this release.
 
@@ -32,6 +32,6 @@ Run [orOS](https://useoros.online) from a USB stick on any Windows or Linux PC, 
 
 **Δεν είσαι σίγουρος; Πάρε το πλήρες.** Το lite μόνο για μικρή λήψη ή μικρό stick. Και τα δύο τρέχουν από το stick και κρατούν τα δεδομένα σου πάνω του.
 
-**Μέγεθος stick:** προτείνονται 32 GB ή περισσότερα (τα 64 GB είναι ιδανικά και συνήθως ταχύτερα)· ελάχιστο 8 GB. Κάνε format το stick σε **exFAT**, αποσυμπίεσε και αντέγραψε ό,τι είναι μέσα στον φάκελο `orOS-Portable` στο stick. Μετά διπλό κλικ στο `orOS.exe` (Windows) ή `./orOS` (Linux).
+**Μέγεθος stick:** προτείνονται 32 GB ή περισσότερα (τα 64 GB είναι ιδανικά και συνήθως ταχύτερα)· ελάχιστο 8 GB. Κάνε format το stick σε **NTFS** (σε Linux, το exFAT και το FAT32 δεν μπορούν να κρατήσουν τα δεδομένα του browser), αποσυμπίεσε και αντέγραψε ό,τι είναι μέσα στον φάκελο `orOS-Portable` στο stick. Μετά διπλό κλικ στο `orOS.exe` (Windows) ή `./orOS` (Linux).
 
 `orOS-sticktest-*`: προαιρετικό τεστ ταχύτητας. Το αντιγράφεις στο stick και το τρέχεις από εκεί για να δεις αν το stick είναι αρκετά γρήγορο. Αρχεία που τελειώνουν σε `-src` και `SOURCES.txt`: ο πηγαίος κώδικας όλων όσων περιέχει το release.
