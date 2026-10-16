@@ -337,7 +337,24 @@ func launchBrowser(root string) error {
 			log.Printf("browser failed early: %v, trying the next one", err)
 			continue
 		}
+		waitProfileClosed(c.profile)
 		return nil
 	}
 	return errors.New("None of the browsers could start. See data/launcher.log on the stick.")
+}
+
+// waitProfileClosed keeps the server up while the browser still uses the
+// profile. The process we started can exit while the window stays open:
+// a browser may restart itself on its first run or after an update, and
+// a second start hands the window to the process that runs already.
+// Stopping the server then showed "Connection refused". On the first run
+// a browser can take long to set up a new profile on a slow stick before
+// it locks it, so we give it a minute to appear.
+func waitProfileClosed(profile string) {
+	for i := 0; i < 60 && !profileInUse(profile); i++ {
+		time.Sleep(time.Second)
+	}
+	for profileInUse(profile) {
+		time.Sleep(time.Second)
+	}
 }
