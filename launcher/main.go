@@ -343,9 +343,11 @@ func launchBrowser(root string) error {
 // profile. The process we started can exit while the window stays open:
 // a browser may restart itself on its first run or after an update, and
 // a second start hands the window to the process that runs already.
-// Stopping the server then showed "Connection refused".
+// Stopping the server then showed "Connection refused". On the first run
+// a browser can take long to set up a new profile on a slow stick before
+// it locks it, so we give it a minute to appear.
 func waitProfileClosed(profile string) {
-	for i := 0; i < 5 && !profileInUse(profile); i++ {
+	for i := 0; i < 60 && !profileInUse(profile); i++ {
 		time.Sleep(time.Second)
 	}
 	for profileInUse(profile) {
