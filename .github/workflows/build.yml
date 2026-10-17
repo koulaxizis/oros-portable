@@ -72,6 +72,7 @@ jobs:
             out/installers/*.AppImage
             out/installers/*.zsync
             out/installers/*.deb
+            out/installers/*.sha256
           retention-days: 14
       - uses: actions/upload-artifact@v4
         with:
@@ -89,7 +90,7 @@ jobs:
           case "$TAG" in v[0-9]*) ;; *) echo "bad tag: $TAG"; exit 1;; esac
           # A draft until the Windows job adds the setup and publishes it.
           gh release create "$TAG" --draft --target "$GITHUB_SHA" out/*.zip out/SOURCES.txt out/sticktest/* out/src/* \
-            out/installers/*.AppImage out/installers/*.zsync out/installers/*.deb \
+            out/installers/*.AppImage out/installers/*.zsync out/installers/*.deb out/installers/*.sha256 \
             --title "orOS $TAG" --notes-file dist-extra/RELEASE-NOTES.md
 
   windows-setup:
@@ -112,14 +113,18 @@ jobs:
           $num = ($ver -split '-')[0]
           & $iscc /Qp "/DAppVer=$ver" "/DNumVer=$num" setup/orOS.iss
           if ($LASTEXITCODE) { exit 1 }
-          Get-ChildItem setup/orOS-Setup-*.exe | Format-Table Name, Length
+          # The launcher checks its automatic download against this file.
+          Get-ChildItem setup/orOS-Setup-*.exe | ForEach-Object {
+            "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" | Set-Content -NoNewline -Encoding ascii "$($_.FullName).sha256"
+          }
+          Get-ChildItem setup/orOS-Setup-* | Format-Table Name, Length
       - name: Install test (silent install, serve, uninstall)
         shell: pwsh
         run: scripts/test-windows-setup.ps1 (Get-ChildItem setup/orOS-Setup-*.exe).FullName
       - uses: actions/upload-artifact@v4
         with:
           name: orOS-Setup
-          path: setup/orOS-Setup-*.exe
+          path: setup/orOS-Setup-*
           retention-days: 14
       - name: Add to the release and publish it
         if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
@@ -128,5 +133,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          gh release upload "$TAG" setup/orOS-Setup-*.exe --repo "$GITHUB_REPOSITORY"
+          gh release upload "$TAG" setup/orOS-Setup-*.exe setup/orOS-Setup-*.exe.sha256 --repo "$GITHUB_REPOSITORY"
           gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"

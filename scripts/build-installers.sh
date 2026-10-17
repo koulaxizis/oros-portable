@@ -15,6 +15,9 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 rm -rf "$OUT" && mkdir -p "$OUT"
 [ -x "$FULL/orOS" ] && [ -f "$FULL/app/index.html" ] && [ -x "$FULL/browser/linux/chrome" ]
+# app/.oros-commit (written by the launcher's update in build.sh) tells the
+# automatic update which orOS an install starts with.
+[ -f "$FULL/app/.oros-commit" ] || echo "warning: no app/.oros-commit; the first automatic update downloads orOS again" >&2
 
 # Program files shared by every installer: the launcher, orOS, licences and
 # the "installed" marker that moves the data to the user's own folder.
@@ -91,4 +94,6 @@ Description: orOS, the offline-first workspace
 CONTROL
 dpkg-deb --root-owner-group -Zxz --build "$DEB" "$OUT/oros_${DEBVER}_amd64.deb"
 
+# The launcher checks each download against its .sha256 file.
+(cd "$OUT" && for f in *.AppImage *.deb; do sha256sum "$f" > "$f.sha256"; done)
 ls -lh "$OUT"

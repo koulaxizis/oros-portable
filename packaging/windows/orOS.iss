@@ -67,8 +67,15 @@ Name: "{userdesktop}\orOS"; Filename: "{app}\orOS.exe"; WorkingDir: "{app}"; Tas
 
 [Run]
 Filename: "{app}\orOS.exe"; Description: "{cm:LaunchProgram,orOS}"; Flags: nowait postinstall skipifsilent
+; An automatic update runs this setup silently with /RELAUNCH=1: open orOS again.
+Filename: "{app}\orOS.exe"; Flags: nowait; Check: Relaunch
 
 [Code]
+function Relaunch(): Boolean;
+begin
+  Result := ExpandConstant('{param:RELAUNCH|0}') = '1';
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   Data: String;

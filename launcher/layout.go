@@ -55,7 +55,8 @@ func userDataDir() string {
 // appDir is the orOS folder to serve. An installed copy serves whichever
 // is newer: the app it was installed with, or one that "update" fetched
 // into the data folder. A newer setup then wins over an older update and
-// an update wins over an older setup.
+// an update wins over an older setup; with equal versions the update wins,
+// because orOS is sometimes merged without a version bump.
 func (l layout) appDir() string {
 	bundled := filepath.Join(l.root, "app")
 	if !l.installed {
@@ -65,7 +66,7 @@ func (l layout) appDir() string {
 	if _, err := os.Stat(filepath.Join(updated, "index.html")); err != nil {
 		return bundled
 	}
-	if compareVersions(appVersion(updated), appVersion(bundled)) > 0 {
+	if compareVersions(appVersion(updated), appVersion(bundled)) >= 0 {
 		return updated
 	}
 	return bundled

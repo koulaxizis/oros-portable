@@ -8,7 +8,7 @@ Install [orOS](https://useoros.online) on any Windows or Linux PC, or run it fro
 | **Linux (any)** | `orOS-<version>-x86_64.AppImage` | One file, no install: make it executable and double-click. It adds itself to the app menu. |
 | **Debian, Ubuntu, Mint** | `oros_<version>_amd64.deb` | Open it with the software installer, or `sudo apt install ./oros_*.deb`. Best choice on Ubuntu 24.04+. |
 
-The installed orOS uses its own private browser (ungoogled-chromium), works offline, and gets the newest orOS from GitHub with "Update orOS" in the Start menu (Windows) or `oros update` (Linux). Its data stays on this computer (`%LOCALAPPDATA%\orOS` or `~/.local/share/oros`), apart from useoros.online in your browser and from any stick: use Dropbox sync in orOS to carry it over. Windows may say "Windows protected your PC" because the setup is not signed yet: choose "More info" › "Run anyway".
+The installed orOS uses its own private browser (ungoogled-chromium), works offline, and keeps itself up to date: new orOS versions download in the background and open the next time you start it (Windows setup and AppImage update themselves too; the .deb tells you when a new version is out). Its data stays on this computer (`%LOCALAPPDATA%\orOS` or `~/.local/share/oros`), apart from useoros.online in your browser and from any stick: use Dropbox sync in orOS to carry it over. Windows may say "Windows protected your PC" because the setup is not signed yet: choose "More info" › "Run anyway".
 
 ## Run from a USB stick
 
@@ -40,7 +40,7 @@ The installed orOS uses its own private browser (ungoogled-chromium), works offl
 | **Linux (κάθε διανομή)** | `orOS-<έκδοση>-x86_64.AppImage` | Ένα αρχείο χωρίς εγκατάσταση: το κάνεις εκτελέσιμο και διπλό κλικ. Μπαίνει μόνο του στο μενού εφαρμογών. |
 | **Debian, Ubuntu, Mint** | `oros_<έκδοση>_amd64.deb` | Το ανοίγεις με το κέντρο λογισμικού ή `sudo apt install ./oros_*.deb`. Η καλύτερη επιλογή σε Ubuntu 24.04+. |
 
-Το εγκατεστημένο orOS έχει δικό του ιδιωτικό browser (ungoogled-chromium), δουλεύει χωρίς internet και φέρνει το νεότερο orOS από το GitHub με το «Update orOS» στο μενού Έναρξη (Windows) ή `oros update` (Linux). Τα δεδομένα του μένουν σε αυτόν τον υπολογιστή (`%LOCALAPPDATA%\orOS` ή `~/.local/share/oros`), χωριστά από το useoros.online στον browser σου και από κάθε stick: για να τα μεταφέρεις, χρησιμοποίησε το Dropbox sync του orOS. Τα Windows μπορεί να πουν «Τα Windows προστάτευσαν τον υπολογιστή σας», επειδή ο εγκαταστάτης δεν είναι ακόμα υπογεγραμμένος: «Περισσότερες πληροφορίες» › «Εκτέλεση οπωσδήποτε».
+Το εγκατεστημένο orOS έχει δικό του ιδιωτικό browser (ungoogled-chromium), δουλεύει χωρίς internet και ενημερώνεται μόνο του: οι νέες εκδόσεις του orOS κατεβαίνουν στο παρασκήνιο και ανοίγουν την επόμενη φορά που θα το ξεκινήσεις (ο εγκαταστάτης των Windows και το AppImage αναβαθμίζονται κι αυτά· το .deb σε ειδοποιεί όταν βγει νέα έκδοση). Τα δεδομένα του μένουν σε αυτόν τον υπολογιστή (`%LOCALAPPDATA%\orOS` ή `~/.local/share/oros`), χωριστά από το useoros.online στον browser σου και από κάθε stick: για να τα μεταφέρεις, χρησιμοποίησε το Dropbox sync του orOS. Τα Windows μπορεί να πουν «Τα Windows προστάτευσαν τον υπολογιστή σας», επειδή ο εγκαταστάτης δεν είναι ακόμα υπογεγραμμένος: «Περισσότερες πληροφορίες» › «Εκτέλεση οπωσδήποτε».
 
 ## Από USB stick
 

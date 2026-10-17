@@ -61,6 +61,9 @@ func main() {
 		if lay.installed {
 			integrateAppImage(lay)
 		}
+		if beforeStart(lay) {
+			return // the setup of a new version takes over
+		}
 		run(lay)
 	case "serve":
 		serveOnly(lay)
@@ -128,6 +131,7 @@ func run(lay layout) {
 	}
 	defer shutdown(srv)
 
+	checkUpdatesLater(lay)
 	if err := launchBrowser(lay); err != nil {
 		fail(err.Error())
 	}

@@ -37,6 +37,8 @@ The same launcher and browser also install on a computer (`scripts/build-install
 
 An `installed` file next to the launcher switches it to installed mode: the browser profile, the log and app updates go to the user's data folder (`%LOCALAPPDATA%\orOS` or `~/.local/share/oros`, `OROS_DATA_DIR` overrides it), and the launcher serves whichever is newer by `APP_VERSION`, the app the installer brought or the one `update` fetched. The address stays `http://localhost:47800/`, but the profile is separate from a stick's, so data moves between them through Dropbox sync. `scripts/test-installers.sh` and `scripts/test-windows-setup.ps1` install, run and remove each package in CI.
 
+Installed copies update themselves (`launcher/autoupdate.go`; portable copies keep the manual `update`). At most every 6 hours, while orOS is open, the launcher checks GitHub in the background: a new commit on orOS `main` is downloaded into `app.next` and swapped in at the next start, never under an open window. A new release of this repo is downloaded too and checked against its `.sha256` asset: the Windows setup then runs silently at the next start (`/RELAUNCH=1` opens orOS again), the AppImage replaces its own file, and other installs (.deb) get one message with the download page. A `no-auto-update` file in the data folder, or `OROS_NO_AUTO_UPDATE`, turns it off; test builds (`0.0.0-<sha>`) never update.
+
 ## Commands
 
 | | |
