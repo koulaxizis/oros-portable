@@ -38,3 +38,20 @@ func desktopMessage(kind, msg string) {
 		}
 	}
 }
+
+// ask shows a yes/no question and reports whether the answer was yes.
+// Without a dialog tool or a display the answer is no.
+func ask(msg string) bool {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		return false
+	}
+	for _, t := range [][]string{
+		{"zenity", "--question", "--title=" + appTitle, "--text=" + msg},
+		{"kdialog", "--title", appTitle, "--yesno", msg},
+	} {
+		if p, err := exec.LookPath(t[0]); err == nil {
+			return exec.Command(p, t[1:]...).Run() == nil
+		}
+	}
+	return false
+}

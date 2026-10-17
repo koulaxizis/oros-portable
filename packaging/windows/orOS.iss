@@ -49,8 +49,12 @@ Name: "el"; MessagesFile: "Greek.isl"
 en.DeleteData=Also delete your orOS data on this computer (notes, files, settings)?%n%nChoose No to keep it for a later install. Data synced to your Dropbox is not affected.
 el.DeleteData=Να σβηστούν και τα δεδομένα του orOS σε αυτόν τον υπολογιστή (σημειώσεις, αρχεία, ρυθμίσεις);%n%nΕπιλέξτε Όχι για να μείνουν για μελλοντική εγκατάσταση. Ό,τι έχει συγχρονιστεί στο Dropbox σας δεν επηρεάζεται.
 
+en.AutoUpdate=Keep orOS up to date automatically (checks GitHub at most every 6 hours)
+el.AutoUpdate=Αυτόματη ενημέρωση του orOS (έλεγχος στο GitHub το πολύ κάθε 6 ώρες)
+
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
+Name: "autoupdate"; Description: "{cm:AutoUpdate}"
 
 [InstallDelete]
 ; A new browser or app version replaces the old folders completely.
@@ -71,6 +75,24 @@ Filename: "{app}\orOS.exe"; Description: "{cm:LaunchProgram,orOS}"; Flags: nowai
 Filename: "{app}\orOS.exe"; Flags: nowait; Check: Relaunch
 
 [Code]
+// The launcher skips its automatic updates while this file exists.
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  Off: String;
+begin
+  if CurStep = ssPostInstall then
+  begin
+    Off := ExpandConstant('{localappdata}\orOS\no-auto-update');
+    if WizardIsTaskSelected('autoupdate') then
+      DeleteFile(Off)
+    else
+    begin
+      ForceDirectories(ExtractFileDir(Off));
+      SaveStringToFile(Off, 'Turned off in the orOS setup.' + #13#10, False);
+    end;
+  end;
+end;
+
 function Relaunch(): Boolean;
 begin
   Result := ExpandConstant('{param:RELAUNCH|0}') = '1';

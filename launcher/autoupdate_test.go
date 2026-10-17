@@ -220,3 +220,34 @@ func TestNoProgramUpdateForSameOrOlderRelease(t *testing.T) {
 		t.Fatal("told about a release that is not newer")
 	}
 }
+
+func TestScoopAndDebInstallsAreRecognised(t *testing.T) {
+	if !managedByScoop(layout{root: `C:\Users\me\scoop\apps\oros\0.2.0`}) && !managedByScoop(layout{root: "C:/Users/me/scoop/apps/oros/0.2.0"}) {
+		t.Fatal("a Scoop install was not recognised")
+	}
+	if managedByScoop(layout{root: `C:\Users\me\AppData\Local\Programs\orOS`}) {
+		t.Fatal("the setup's own install is not Scoop's")
+	}
+	if isDebInstall(layout{root: "/tmp/x"}) {
+		t.Fatal("only /opt/oros is the .deb install")
+	}
+}
+
+func TestPendingDebPicksNewest(t *testing.T) {
+	lay := installedLayout(t)
+	old := version
+	defer func() { version = old }()
+	version = "0.2.0"
+	dir := updatesDir(lay)
+	_ = os.MkdirAll(dir, 0o755)
+	for _, v := range []string{"0.2.0", "0.3.0", "0.2.5"} {
+		_ = os.WriteFile(filepath.Join(dir, debName(v)), nil, 0o644)
+	}
+	_ = os.WriteFile(filepath.Join(dir, setupName("0.9.0")), nil, 0o644)
+	if path, ver := pendingFile(lay, "oros_", "_amd64.deb"); ver != "0.3.0" || filepath.Base(path) != debName("0.3.0") {
+		t.Fatalf("picked %s %s", path, ver)
+	}
+	if triedBefore(lay, "0.3.0") || !triedBefore(lay, "0.3.0") {
+		t.Fatal("a version is offered once")
+	}
+}

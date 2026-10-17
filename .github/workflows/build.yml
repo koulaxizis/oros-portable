@@ -135,3 +135,60 @@ jobs:
         run: |
           gh release upload "$TAG" setup/orOS-Setup-*.exe setup/orOS-Setup-*.exe.sha256 --repo "$GITHUB_REPOSITORY"
           gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
+
+  channels:
+    # Free install channels that point at the release: the Scoop bucket in
+    # this repo (scoop bucket add oros https://github.com/koulaxizis/oros-portable)
+    # and winget (a pull request to microsoft/winget-pkgs, needs the
+    # WINGET_TOKEN secret: a classic token with public_repo scope).
+    needs: windows-setup
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Manifests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          VERSION="${TAG#v}"
+          gh release download "$TAG" --pattern "orOS-Setup-$VERSION.exe.sha256" --dir /tmp/sum
+          SHA="$(cut -d' ' -f1 /tmp/sum/*.sha256)"
+          scripts/channel-manifests.sh "$VERSION" "$SHA" out/channels
+      - uses: actions/upload-artifact@v4
+        with:
+          name: winget-manifests
+          path: out/channels/winget
+          retention-days: 7
+      - name: Update the Scoop bucket on main
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          mkdir -p bucket && cp out/channels/bucket/oros.json bucket/oros.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bucket/oros.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Scoop: orOS ${TAG#v} [skip ci]"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push origin HEAD:main && exit 0; sleep 5; done
+          exit 1
+
+  winget:
+    needs: channels
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: winget-manifests
+          path: winget
+      - name: Submit to winget-pkgs
+        shell: pwsh
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          if (-not $env:WINGET_TOKEN) { Write-Host "No WINGET_TOKEN secret: skipping winget."; exit 0 }
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          .\wingetcreate.exe submit --token $env:WINGET_TOKEN --prtitle "New version: koulaxizis.orOS" winget
+          if ($LASTEXITCODE) { exit 1 }

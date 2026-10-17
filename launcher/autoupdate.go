@@ -56,7 +56,7 @@ func beforeStart(lay layout) bool {
 	if !autoUpdatesOn(lay) || alreadyRunning() {
 		return false
 	}
-	if runPendingSetup(lay) {
+	if runPendingSetup(lay) || (isDebInstall(lay) && runPendingDeb(lay)) {
 		return true
 	}
 	applyStagedApp(lay)
@@ -189,6 +189,8 @@ func checkProgramUpdate(lay layout) error {
 		return nil
 	}
 	switch {
+	case managedByScoop(lay):
+		return nil // "scoop update" brings new releases
 	case runtime.GOOS == "windows":
 		_, err = download(rel, setupName(rel.version()), filepath.Join(updatesDir(lay), setupName(rel.version())))
 		if err == nil {
@@ -197,10 +199,67 @@ func checkProgramUpdate(lay layout) error {
 		return err
 	case os.Getenv("APPIMAGE") != "":
 		return replaceAppImage(rel, os.Getenv("APPIMAGE"))
+	case isDebInstall(lay):
+		return fetchDeb(lay, rel)
 	default:
 		notifyOnce(lay, rel)
 		return nil
 	}
+}
+
+// managedByScoop: Scoop unpacks the setup into ...\scoop\apps\oros\<ver>
+// and updates it itself, so running our setup would install a second copy.
+func managedByScoop(lay layout) bool {
+	return strings.Contains(strings.ToLower(filepath.ToSlash(lay.root)), "/scoop/apps/")
+}
+
+func isDebInstall(lay layout) bool {
+	return runtime.GOOS == "linux" && filepath.ToSlash(lay.root) == "/opt/oros"
+}
+
+func debName(ver string) string { return "oros_" + ver + "_amd64.deb" }
+
+// fetchDeb downloads the new .deb; the next start offers to install it
+// (installing replaces the browser files, which must not happen under an
+// open window).
+func fetchDeb(lay layout, rel release) error {
+	if _, err := exec.LookPath("pkexec"); err != nil {
+		notifyOnce(lay, rel)
+		return nil
+	}
+	_, err := download(rel, debName(rel.version()), filepath.Join(updatesDir(lay), debName(rel.version())))
+	if err == nil {
+		log.Printf("orOS %s downloaded; it is offered at the next start", rel.version())
+	}
+	return err
+}
+
+// runPendingDeb asks, once per version, to install a downloaded .deb.
+// pkexec shows the desktop's own password prompt and apt keeps the
+// dependencies right. After the install the new orOS starts in our place.
+func runPendingDeb(lay layout) bool {
+	deb, ver := pendingFile(lay, "oros_", "_amd64.deb")
+	if deb == "" || triedBefore(lay, ver) {
+		return false
+	}
+	if !ask(fmt.Sprintf("orOS %s is ready. Install it now? Your computer will ask for your password.", ver)) {
+		return false
+	}
+	pkexec, err := exec.LookPath("pkexec")
+	if err != nil {
+		return false
+	}
+	out, err := exec.Command(pkexec, "apt-get", "install", "-y", deb).CombinedOutput()
+	if err != nil {
+		log.Printf("installing %s: %v\n%s", deb, err, out)
+		notify("orOS " + ver + " could not be installed. You can download it from https://github.com/koulaxizis/oros-portable/releases")
+		return false
+	}
+	_ = os.Remove(deb)
+	if err := exec.Command(filepath.Join(lay.root, "orOS")).Start(); err != nil {
+		return false
+	}
+	return true
 }
 
 func setupName(ver string) string    { return "orOS-Setup-" + ver + ".exe" }
@@ -283,17 +342,18 @@ func fileSHA256(path string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// pendingSetup is the newest downloaded setup that is newer than this
-// launcher, or "". Older ones are deleted.
-func pendingSetup(lay layout) (string, string) {
+// pendingFile is the newest downloaded update named <prefix><version>
+// <suffix> that is newer than this launcher, with its version, or "".
+// Older ones are deleted.
+func pendingFile(lay layout, prefix, suffix string) (string, string) {
 	entries, _ := os.ReadDir(updatesDir(lay))
 	best, bestVer := "", version
 	for _, e := range entries {
 		name := e.Name()
-		if !strings.HasPrefix(name, "orOS-Setup-") || !strings.HasSuffix(name, ".exe") {
+		if !strings.HasPrefix(name, prefix) || !strings.HasSuffix(name, suffix) {
 			continue
 		}
-		ver := strings.TrimSuffix(strings.TrimPrefix(name, "orOS-Setup-"), ".exe")
+		ver := strings.TrimSuffix(strings.TrimPrefix(name, prefix), suffix)
 		path := filepath.Join(updatesDir(lay), name)
 		if compareVersions(ver, bestVer) > 0 {
 			if best != "" {
@@ -307,20 +367,28 @@ func pendingSetup(lay layout) (string, string) {
 	return best, bestVer
 }
 
-// runPendingSetup starts a downloaded setup silently. The setup closes
-// nothing (orOS has not opened yet), replaces the program and starts orOS
-// again (/RELAUNCH=1). A setup that already failed once for this version
-// is not tried again; the next release gets a new chance.
-func runPendingSetup(lay layout) bool {
-	setup, ver := pendingSetup(lay)
-	if setup == "" {
-		return false
-	}
+func pendingSetup(lay layout) (string, string) { return pendingFile(lay, "orOS-Setup-", ".exe") }
+
+// triedBefore records an attempt for ver and reports whether one was made
+// already: an update that failed once is not forced on every start; the
+// next release gets a new chance.
+func triedBefore(lay layout, ver string) bool {
 	tried := filepath.Join(updatesDir(lay), "tried")
 	if b, _ := os.ReadFile(tried); strings.TrimSpace(string(b)) == ver {
-		return false
+		return true
 	}
 	_ = os.WriteFile(tried, []byte(ver+"\n"), 0o644)
+	return false
+}
+
+// runPendingSetup starts a downloaded setup silently. The setup closes
+// nothing (orOS has not opened yet), replaces the program and starts orOS
+// again (/RELAUNCH=1).
+func runPendingSetup(lay layout) bool {
+	setup, ver := pendingSetup(lay)
+	if setup == "" || triedBefore(lay, ver) {
+		return false
+	}
 	log.Printf("installing orOS %s", ver)
 	cmd := exec.Command(setup, "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CURRENTUSER", "/RELAUNCH=1")
 	if err := cmd.Start(); err != nil {
