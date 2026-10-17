@@ -102,4 +102,6 @@ Privacy: the installed orOS checks GitHub for updates (the orOS web app and new 
 
 ## Licences
 
+Third-party libraries, fonts, icons and data files bundled with orOS keep their own licences; see CREDITS.md in the orOS repository.
+
 orOS Portable: MIT. ungoogled-chromium: BSD-3-Clause, with LGPL and other open-source components (top-level licences in `LICENSES/`; the full component list is at `chrome://credits` in the bundled browser). Sources: `SOURCES.txt`, written offer: `WRITTEN-OFFER.txt`.
