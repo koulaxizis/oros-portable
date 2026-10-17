@@ -1,0 +1,9 @@
+# Ubuntu 23.10+ lets only listed programs create user namespaces, which the
+# bundled Chromium needs for its sandbox. Same rule as Chrome's own package.
+abi <abi/4.0>,
+include <tunables/global>
+
+profile oros-chromium /opt/oros/browser/linux/chrome flags=(unconfined) {
+  userns,
+  include if exists <local/oros-chromium>
+}

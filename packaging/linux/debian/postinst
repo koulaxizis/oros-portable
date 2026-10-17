@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+# Load the AppArmor rule only where the system knows the 4.0 syntax
+# (Ubuntu 23.10+, Debian 13+); older systems allow user namespaces anyway.
+if [ "$1" = configure ] && [ -f /etc/apparmor.d/abi/4.0 ]; then
+  cp /usr/share/oros/apparmor-oros-chromium /etc/apparmor.d/oros-chromium
+  if command -v apparmor_parser >/dev/null 2>&1 && [ -d /sys/kernel/security/apparmor ]; then
+    apparmor_parser -r /etc/apparmor.d/oros-chromium || true
+  fi
+fi
+if command -v update-desktop-database >/dev/null 2>&1; then
+  update-desktop-database -q /usr/share/applications || true
+fi
+exit 0

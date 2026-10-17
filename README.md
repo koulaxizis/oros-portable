@@ -25,6 +25,18 @@ The address never changes, because the browser ties stored data to it. orOS's se
 
 The lite edition has no bundled browser and uses an installed Chromium, Brave, Edge or Chrome, with a separate `data/profile-system/` profile (a profile from a newer Chromium may not open in an older one). If the bundled browser fails to start (for example a Linux system that blocks its sandbox), the launcher falls back to an installed one.
 
+## Installers
+
+The same launcher and browser also install on a computer (`scripts/build-installers.sh`, built in CI next to the portable zips):
+
+| | File | Installs to |
+|---|---|---|
+| Windows 10/11 | `orOS-Setup-<version>.exe` (Inno Setup, `packaging/windows/orOS.iss`), per user, no admin rights, Start menu entry, uninstaller | `%LOCALAPPDATA%\Programs\orOS` |
+| Linux | `orOS-<version>-x86_64.AppImage` (+ `.zsync` for AppImageUpdate), adds its own menu entry on start (`remove-menu` takes it away) | runs from the file |
+| Debian/Ubuntu | `oros_<version>_amd64.deb`, `/usr/bin/oros`, desktop entry, AppArmor rule that lets the bundled Chromium use its sandbox on Ubuntu 23.10+ | `/opt/oros` |
+
+An `installed` file next to the launcher switches it to installed mode: the browser profile, the log and app updates go to the user's data folder (`%LOCALAPPDATA%\orOS` or `~/.local/share/oros`, `OROS_DATA_DIR` overrides it), and the launcher serves whichever is newer by `APP_VERSION`, the app the installer brought or the one `update` fetched. The address stays `http://localhost:47800/`, but the profile is separate from a stick's, so data moves between them through Dropbox sync. `scripts/test-installers.sh` and `scripts/test-windows-setup.ps1` install, run and remove each package in CI.
+
 ## Commands
 
 | | |
@@ -32,6 +44,7 @@ The lite edition has no bundled browser and uses an installed Chromium, Brave, E
 | `orOS` | start orOS |
 | `orOS update` | download the latest orOS from GitHub into `app/` (previous kept as `app.old/`) |
 | `orOS serve` | only run the server, for debugging |
+| `orOS remove-menu` | remove the menu entry that the AppImage added |
 
 `OROS_PORTABLE_BROWSER` and `OROS_PORTABLE_BROWSER_ARGS` override the browser and add flags (used by tests).
 

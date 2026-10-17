@@ -27,9 +27,9 @@ func desktopMessage(kind, msg string) {
 		return
 	}
 	tries := [][]string{
-		{"zenity", "--" + kind, "--title=orOS Portable", "--text=" + msg},
-		{"kdialog", "--title", "orOS Portable", map[string]string{"error": "--error", "info": "--msgbox"}[kind], msg},
-		{"notify-send", "orOS Portable", msg},
+		{"zenity", "--" + kind, "--title=" + appTitle, "--text=" + msg},
+		{"kdialog", "--title", appTitle, map[string]string{"error": "--error", "info": "--msgbox"}[kind], msg},
+		{"notify-send", appTitle, msg},
 	}
 	for _, t := range tries {
 		if p, err := exec.LookPath(t[0]); err == nil {

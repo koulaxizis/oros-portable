@@ -48,6 +48,13 @@ jobs:
           if [ -n "$TAG" ]; then VERSION="${TAG#v}"; fi
           scripts/build.sh "$VERSION"
           scripts/build-sticktest.sh "$VERSION"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+      - name: Linux installers (AppImage, .deb) and Windows setup files
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q desktop-file-utils zsync
+          scripts/build-installers.sh "$VERSION"
+      - name: Install test (.deb and AppImage)
+        run: scripts/test-installers.sh
       - name: Sources
         # Tags only (several GB of downloads); a manual run tests the step.
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
@@ -62,7 +69,15 @@ jobs:
             out/SOURCES.txt
             out/sticktest/*
             out/src/SHA256SUMS-src.txt
+            out/installers/*.AppImage
+            out/installers/*.zsync
+            out/installers/*.deb
           retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-setup-files
+          path: out/installers/windows
+          retention-days: 3
       - name: Release
         # A tag push, or a manual run with a tag (the tag is then created
         # on the commit that was built).
@@ -72,4 +87,46 @@ jobs:
           TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           case "$TAG" in v[0-9]*) ;; *) echo "bad tag: $TAG"; exit 1;; esac
-          gh release create "$TAG" --target "$GITHUB_SHA" out/*.zip out/SOURCES.txt out/sticktest/* out/src/* --title "orOS Portable $TAG" --notes-file dist-extra/RELEASE-NOTES.md
+          # A draft until the Windows job adds the setup and publishes it.
+          gh release create "$TAG" --draft --target "$GITHUB_SHA" out/*.zip out/SOURCES.txt out/sticktest/* out/src/* \
+            out/installers/*.AppImage out/installers/*.zsync out/installers/*.deb \
+            --title "orOS $TAG" --notes-file dist-extra/RELEASE-NOTES.md
+
+  windows-setup:
+    needs: package
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-setup-files
+          path: setup
+      - name: Build orOS-Setup.exe
+        shell: pwsh
+        run: |
+          # Greek.isl is written for Inno Setup 6.5+, newer than some runner images.
+          choco upgrade innosetup -y --no-progress
+          if ($LASTEXITCODE) { exit 1 }
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          $ver = (Get-Content setup/VERSION).Trim()
+          $num = ($ver -split '-')[0]
+          & $iscc /Qp "/DAppVer=$ver" "/DNumVer=$num" setup/orOS.iss
+          if ($LASTEXITCODE) { exit 1 }
+          Get-ChildItem setup/orOS-Setup-*.exe | Format-Table Name, Length
+      - name: Install test (silent install, serve, uninstall)
+        shell: pwsh
+        run: scripts/test-windows-setup.ps1 (Get-ChildItem setup/orOS-Setup-*.exe).FullName
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orOS-Setup
+          path: setup/orOS-Setup-*.exe
+          retention-days: 14
+      - name: Add to the release and publish it
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          gh release upload "$TAG" setup/orOS-Setup-*.exe --repo "$GITHUB_REPOSITORY"
+          gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
