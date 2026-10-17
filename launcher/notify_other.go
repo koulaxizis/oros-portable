@@ -27,9 +27,9 @@ func desktopMessage(kind, msg string) {
 		return
 	}
 	tries := [][]string{
-		{"zenity", "--" + kind, "--title=orOS Portable", "--text=" + msg},
-		{"kdialog", "--title", "orOS Portable", map[string]string{"error": "--error", "info": "--msgbox"}[kind], msg},
-		{"notify-send", "orOS Portable", msg},
+		{"zenity", "--" + kind, "--title=" + appTitle, "--text=" + msg},
+		{"kdialog", "--title", appTitle, map[string]string{"error": "--error", "info": "--msgbox"}[kind], msg},
+		{"notify-send", appTitle, msg},
 	}
 	for _, t := range tries {
 		if p, err := exec.LookPath(t[0]); err == nil {
@@ -37,4 +37,21 @@ func desktopMessage(kind, msg string) {
 			return
 		}
 	}
+}
+
+// ask shows a yes/no question and reports whether the answer was yes.
+// Without a dialog tool or a display the answer is no.
+func ask(msg string) bool {
+	if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+		return false
+	}
+	for _, t := range [][]string{
+		{"zenity", "--question", "--title=" + appTitle, "--text=" + msg},
+		{"kdialog", "--title", appTitle, "--yesno", msg},
+	} {
+		if p, err := exec.LookPath(t[0]); err == nil {
+			return exec.Command(p, t[1:]...).Run() == nil
+		}
+	}
+	return false
 }

@@ -13,7 +13,12 @@ import (
 	"time"
 )
 
-const updateURL = "https://github.com/koulaxizis/oros/archive/refs/heads/main.zip"
+// updateURL is a variable so tests can point it at a local server.
+var updateURL = "https://github.com/koulaxizis/oros/archive/refs/heads/main.zip"
+
+// commitFile holds the orOS commit an app folder was built from. GitHub
+// puts that commit in the comment of its archives.
+const commitFile = ".oros-commit"
 
 // Folders of the orOS repo that are not part of the web app.
 var skipDirs = map[string]bool{
@@ -24,6 +29,16 @@ var skipDirs = map[string]bool{
 // folders, keeping the previous version as app.old. The service worker
 // notices the new sw.js on the next start and refreshes its cache.
 func update(root string) error {
+	next := filepath.Join(root, "app.new")
+	if err := fetchApp(root, next); err != nil {
+		return err
+	}
+	return swapApp(root, next)
+}
+
+// fetchApp downloads the latest orOS and unpacks it into dest, replacing
+// whatever was there.
+func fetchApp(root, dest string) error {
 	tmp, err := os.CreateTemp(root, "oros-update-*.zip")
 	if err != nil {
 		return err
@@ -45,13 +60,12 @@ func update(root string) error {
 		return err
 	}
 
-	next := filepath.Join(root, "app.new")
-	_ = os.RemoveAll(next)
-	if err := unpackApp(tmp.Name(), next); err != nil {
-		_ = os.RemoveAll(next)
+	_ = os.RemoveAll(dest)
+	if err := unpackApp(tmp.Name(), dest); err != nil {
+		_ = os.RemoveAll(dest)
 		return err
 	}
-	return swapApp(root, next)
+	return nil
 }
 
 func unpackApp(zipPath, dest string) error {
@@ -94,7 +108,34 @@ func unpackApp(zipPath, dest string) error {
 	if _, err := os.Stat(filepath.Join(destAbs, "index.html")); err != nil {
 		return errors.New("the download does not look like orOS")
 	}
+	if isCommit(zr.Comment) {
+		_ = os.WriteFile(filepath.Join(destAbs, commitFile), []byte(zr.Comment+"\n"), 0o644)
+	}
 	return nil
+}
+
+func isCommit(s string) bool {
+	if len(s) != 40 {
+		return false
+	}
+	for _, c := range s {
+		if !strings.ContainsRune("0123456789abcdef", c) {
+			return false
+		}
+	}
+	return true
+}
+
+// appCommit is the orOS commit an app folder came from, or "".
+func appCommit(dir string) string {
+	b, err := os.ReadFile(filepath.Join(dir, commitFile))
+	if err != nil {
+		return ""
+	}
+	if s := strings.TrimSpace(string(b)); isCommit(s) {
+		return s
+	}
+	return ""
 }
 
 func writeFile(f *zip.File, target string) error {

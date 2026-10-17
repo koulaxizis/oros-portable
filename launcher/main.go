@@ -9,6 +9,7 @@
 //	oros-portable           start orOS (default)
 //	oros-portable update    replace app/ with the latest orOS from GitHub
 //	oros-portable serve     only run the server (debugging)
+//	oros-portable remove-menu  remove the menu entry an AppImage added
 package main
 
 import (
@@ -38,26 +39,41 @@ const (
 
 var version = "0.1.0"
 
+// appTitle names the launcher in messages and dialogs.
+var appTitle = "orOS Portable"
+
 func main() {
 	root, err := rootDir()
 	if err != nil {
 		fail("Cannot find the orOS Portable folder: " + err.Error())
 	}
-	setupLog(root)
+	lay := newLayout(root)
+	if lay.installed {
+		appTitle = "orOS"
+	}
+	setupLog(lay.data)
 	cmd := ""
 	if len(os.Args) > 1 {
 		cmd = os.Args[1]
 	}
 	switch cmd {
 	case "", "run":
-		run(root)
+		if lay.installed {
+			integrateAppImage(lay)
+		}
+		if beforeStart(lay) {
+			return // the setup of a new version takes over
+		}
+		run(lay)
 	case "serve":
-		serveOnly(root)
+		serveOnly(lay)
 	case "update":
-		if err := update(root); err != nil {
+		if err := update(lay.updates); err != nil {
 			fail("Update failed: " + err.Error())
 		}
-		notify("orOS was updated. Start orOS Portable again to use the new version.")
+		notify("orOS was updated. Start " + appTitle + " again to use the new version.")
+	case "remove-menu":
+		removeAppImageMenu()
 	case "version", "--version":
 		fmt.Println("oros-portable", version)
 	default:
@@ -82,8 +98,7 @@ func rootDir() (string, error) {
 	return filepath.Dir(exe), nil
 }
 
-func setupLog(root string) {
-	dir := filepath.Join(root, "data")
+func setupLog(dir string) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return
 	}
@@ -94,12 +109,12 @@ func setupLog(root string) {
 	log.SetOutput(io.MultiWriter(os.Stderr, f))
 }
 
-func run(root string) {
-	appDir := filepath.Join(root, "app")
+func run(lay layout) {
+	appDir := lay.appDir()
 	if _, err := os.Stat(filepath.Join(appDir, "index.html")); err != nil {
 		fail("The app folder is missing next to the launcher: " + appDir)
 	}
-	if err := profileDirUsable(filepath.Join(root, "data")); err != nil {
+	if err := profileDirUsable(lay.data); err != nil {
 		log.Printf("profile folder: %v", err)
 		fail("This stick's format (exFAT or FAT32) cannot hold the browser's data on Linux. Format the stick as NTFS and copy orOS Portable to it again; on Windows it works as it is.")
 	}
@@ -111,24 +126,25 @@ func run(root string) {
 		}
 		// Another launcher from this stick is serving already: just open a window.
 		log.Printf("server already running, opening a window only")
-		_ = launchBrowser(root)
+		_ = launchBrowser(lay)
 		return
 	}
 	defer shutdown(srv)
 
-	if err := launchBrowser(root); err != nil {
+	checkUpdatesLater(lay)
+	if err := launchBrowser(lay); err != nil {
 		fail(err.Error())
 	}
-	log.Printf("browser closed; data is saved, the stick can be removed")
+	log.Printf("browser closed; data is saved")
 }
 
-func serveOnly(root string) {
-	srv, err := startServer(filepath.Join(root, "app"))
+func serveOnly(lay layout) {
+	srv, err := startServer(lay.appDir())
 	if err != nil {
 		fail(err.Error())
 	}
 	defer shutdown(srv)
-	log.Printf("serving %s at %s (Ctrl+C to stop)", filepath.Join(root, "app"), appURL)
+	log.Printf("serving %s at %s (Ctrl+C to stop)", lay.appDir(), appURL)
 	select {}
 }
 
@@ -154,7 +170,7 @@ func startServer(appDir string) (servers, error) {
 	if ln6, err := net.Listen("tcp", fmt.Sprintf("[::1]:%d", port)); err == nil {
 		out = append(out, serve(ln6, handler))
 	}
-	log.Printf("orOS Portable %s serving %s", version, appDir)
+	log.Printf("%s %s serving %s", appTitle, version, appDir)
 	return out, nil
 }
 
@@ -262,13 +278,13 @@ type candidate struct {
 // browserCandidates lists the bundled browser first, then installed
 // Chromium-family browsers. A system browser gets its own profile folder,
 // because a profile written by a newer Chromium may not open in an older one.
-func browserCandidates(root string) []candidate {
-	data := filepath.Join(root, "data")
+func browserCandidates(lay layout) []candidate {
+	data := lay.data
 	var out []candidate
 	if p := os.Getenv("OROS_PORTABLE_BROWSER"); p != "" {
 		out = append(out, candidate{p, filepath.Join(data, "profile")})
 	}
-	for _, p := range bundledBrowsers(root) {
+	for _, p := range bundledBrowsers(lay.root) {
 		out = append(out, candidate{p, filepath.Join(data, "profile")})
 	}
 	for _, p := range systemBrowsers() {
@@ -323,8 +339,8 @@ func existing(paths ...string) []string {
 // launchBrowser runs the first browser that starts and waits until its
 // window closes. A browser that dies within a few seconds with an error
 // (for example a sandbox that the host system blocks) is skipped.
-func launchBrowser(root string) error {
-	list := browserCandidates(root)
+func launchBrowser(lay layout) error {
+	list := browserCandidates(lay)
 	if len(list) == 0 {
 		return errors.New("No browser was found. Put the browser folder next to the launcher, or install Chromium, Edge, Brave or Chrome.")
 	}
@@ -340,7 +356,7 @@ func launchBrowser(root string) error {
 		waitProfileClosed(c.profile)
 		return nil
 	}
-	return errors.New("None of the browsers could start. See data/launcher.log on the stick.")
+	return errors.New("None of the browsers could start. See " + filepath.Join(lay.data, "launcher.log") + ".")
 }
 
 // waitProfileClosed keeps the server up while the browser still uses the

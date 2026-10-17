@@ -13,9 +13,19 @@ FULL="$OUT/orOS-Portable"
 rm -rf "$OUT" && mkdir -p "$LITE"
 
 echo "== launchers $VERSION"
+# Windows version info and icon: product name and version must be set in
+# every build (SignPath Foundation's signing conditions). Numbers only, so
+# test builds "0.0.0-<sha>" carry 0.0.0.
+NUMVER="${VERSION%%-*}"
+(cd "$ROOT/launcher" && rm -f rsrc_windows_*.syso &&
+  go run github.com/tc-hib/go-winres@v0.3.3 simply --arch amd64 --manifest gui \
+    --icon "$ROOT/packaging/windows/oros.ico" --product-name orOS --file-description orOS \
+    --product-version "$NUMVER" --file-version "$NUMVER" --original-filename orOS.exe \
+    --copyright "MIT License, orOS contributors" --out rsrc)
 (cd "$ROOT/launcher" &&
   GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=$VERSION" -o "$LITE/orOS.exe" . &&
   GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "$LITE/orOS" .)
+rm -f "$ROOT/launcher"/rsrc_windows_*.syso
 cp "$ROOT/dist-extra/"* "$LITE/"
 chmod +x "$LITE/orOS" "$LITE/update-oros.sh"
 
