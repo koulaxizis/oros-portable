@@ -42,7 +42,7 @@ Installed copies update themselves (`launcher/autoupdate.go`; portable copies ke
 ### Install channels
 
 - **Scoop:** `scoop bucket add oros https://github.com/koulaxizis/oros-portable` then `scoop install oros`. The release workflow writes `bucket/oros.json` (from `packaging/scoop/oros.json.in`) to `main`.
-- **winget:** `winget install koulaxizis.orOS`. The release workflow submits the manifests (`packaging/winget/`) to microsoft/winget-pkgs when the `WINGET_TOKEN` secret holds a classic token with `public_repo` scope.
+- winget is not offered: it is run by Microsoft, and orOS stays off store-like channels.
 - An apt repository is not offered: the .deb (about 185 MB, mostly the browser) is above GitHub Pages' 100 MB file limit, so the .deb updates itself instead.
 
 ## Commands
