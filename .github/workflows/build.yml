@@ -48,6 +48,13 @@ jobs:
           if [ -n "$TAG" ]; then VERSION="${TAG#v}"; fi
           scripts/build.sh "$VERSION"
           scripts/build-sticktest.sh "$VERSION"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+      - name: Linux installers (AppImage, .deb) and Windows setup files
+        run: |
+          sudo apt-get update -q && sudo apt-get install -y -q desktop-file-utils zsync
+          scripts/build-installers.sh "$VERSION"
+      - name: Install test (.deb and AppImage)
+        run: scripts/test-installers.sh
       - name: Sources
         # Tags only (several GB of downloads); a manual run tests the step.
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
@@ -62,7 +69,16 @@ jobs:
             out/SOURCES.txt
             out/sticktest/*
             out/src/SHA256SUMS-src.txt
+            out/installers/*.AppImage
+            out/installers/*.zsync
+            out/installers/*.deb
+            out/installers/*.sha256
           retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-setup-files
+          path: out/installers/windows
+          retention-days: 3
       - name: Release
         # A tag push, or a manual run with a tag (the tag is then created
         # on the commit that was built).
@@ -72,4 +88,107 @@ jobs:
           TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           case "$TAG" in v[0-9]*) ;; *) echo "bad tag: $TAG"; exit 1;; esac
-          gh release create "$TAG" --target "$GITHUB_SHA" out/*.zip out/SOURCES.txt out/sticktest/* out/src/* --title "orOS Portable $TAG" --notes-file dist-extra/RELEASE-NOTES.md
+          # A draft until the Windows job adds the setup and publishes it.
+          gh release create "$TAG" --draft --target "$GITHUB_SHA" out/*.zip out/SOURCES.txt out/sticktest/* out/src/* \
+            out/installers/*.AppImage out/installers/*.zsync out/installers/*.deb out/installers/*.sha256 \
+            --title "orOS $TAG" --notes-file dist-extra/RELEASE-NOTES.md
+
+  windows-setup:
+    needs: package
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-setup-files
+          path: setup
+      - name: Build orOS-Setup.exe
+        shell: pwsh
+        run: |
+          # Greek.isl is written for Inno Setup 6.5+, newer than some runner images.
+          choco upgrade innosetup -y --no-progress
+          if ($LASTEXITCODE) { exit 1 }
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          $ver = (Get-Content setup/VERSION).Trim()
+          $num = ($ver -split '-')[0]
+          & $iscc /Qp "/DAppVer=$ver" "/DNumVer=$num" setup/orOS.iss
+          if ($LASTEXITCODE) { exit 1 }
+          # The launcher checks its automatic download against this file.
+          Get-ChildItem setup/orOS-Setup-*.exe | ForEach-Object {
+            "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" | Set-Content -NoNewline -Encoding ascii "$($_.FullName).sha256"
+          }
+          Get-ChildItem setup/orOS-Setup-* | Format-Table Name, Length
+      - name: Install test (silent install, serve, uninstall)
+        shell: pwsh
+        run: scripts/test-windows-setup.ps1 (Get-ChildItem setup/orOS-Setup-*.exe).FullName
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orOS-Setup
+          path: setup/orOS-Setup-*
+          retention-days: 14
+      - name: Add to the release and publish it
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          gh release upload "$TAG" setup/orOS-Setup-*.exe setup/orOS-Setup-*.exe.sha256 --repo "$GITHUB_REPOSITORY"
+          gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
+
+  channels:
+    # Free install channels that point at the release: the Scoop bucket in
+    # this repo (scoop bucket add oros https://github.com/koulaxizis/oros-portable)
+    # and winget (a pull request to microsoft/winget-pkgs, needs the
+    # WINGET_TOKEN secret: a classic token with public_repo scope).
+    needs: windows-setup
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Manifests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          VERSION="${TAG#v}"
+          gh release download "$TAG" --pattern "orOS-Setup-$VERSION.exe.sha256" --dir /tmp/sum
+          SHA="$(cut -d' ' -f1 /tmp/sum/*.sha256)"
+          scripts/channel-manifests.sh "$VERSION" "$SHA" out/channels
+      - uses: actions/upload-artifact@v4
+        with:
+          name: winget-manifests
+          path: out/channels/winget
+          retention-days: 7
+      - name: Update the Scoop bucket on main
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          mkdir -p bucket && cp out/channels/bucket/oros.json bucket/oros.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bucket/oros.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Scoop: orOS ${TAG#v} [skip ci]"
+          for i in 1 2 3; do git pull --rebase -q origin main && git push origin HEAD:main && exit 0; sleep 5; done
+          exit 1
+
+  winget:
+    needs: channels
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: winget-manifests
+          path: winget
+      - name: Submit to winget-pkgs
+        shell: pwsh
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          if (-not $env:WINGET_TOKEN) { Write-Host "No WINGET_TOKEN secret: skipping winget."; exit 0 }
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          .\wingetcreate.exe submit --token $env:WINGET_TOKEN --prtitle "New version: koulaxizis.orOS" winget
+          if ($LASTEXITCODE) { exit 1 }

@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+if [ "$1" = remove ] || [ "$1" = purge ]; then
+  if [ -f /etc/apparmor.d/oros-chromium ]; then
+    if command -v apparmor_parser >/dev/null 2>&1 && [ -d /sys/kernel/security/apparmor ]; then
+      apparmor_parser -R /etc/apparmor.d/oros-chromium 2>/dev/null || true
+    fi
+    rm -f /etc/apparmor.d/oros-chromium
+  fi
+  # Files the browser may have added next to itself.
+  rm -rf /opt/oros
+fi
+# Each user's data stays in ~/.local/share/oros.
+exit 0

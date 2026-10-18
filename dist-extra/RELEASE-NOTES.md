@@ -1,6 +1,20 @@
-Run [orOS](https://useoros.online) from a USB stick on any Windows or Linux PC, with or without internet. Free forever, MIT.
+Install [orOS](https://useoros.online) on any Windows or Linux PC, or run it from a USB stick, with or without internet. Free forever, MIT.
 
-## Which file do I download?
+## Install on this computer
+
+| | File | |
+|---|---|---|
+| **Windows 10/11** | `orOS-Setup-<version>.exe` | No administrator rights needed. Adds orOS to the Start menu; remove it from Settings › Apps. |
+| **Linux (any)** | `orOS-<version>-x86_64.AppImage` | One file, no install: make it executable and double-click. It adds itself to the app menu. |
+| **Debian, Ubuntu, Mint** | `oros_<version>_amd64.deb` | Open it with the software installer, or `sudo apt install ./oros_*.deb`. Best choice on Ubuntu 24.04+. |
+
+The installed orOS uses its own private browser (ungoogled-chromium), works offline, and keeps itself up to date: new orOS versions download in the background and open the next time you start it (Windows setup and AppImage update themselves too; the .deb tells you when a new version is out). Its data stays on this computer (`%LOCALAPPDATA%\orOS` or `~/.local/share/oros`), apart from useoros.online in your browser and from any stick: use Dropbox sync in orOS to carry it over. Windows may say "Windows protected your PC" because the setup is not signed yet: choose "More info" › "Run anyway".
+
+Also from free package managers: `scoop bucket add oros https://github.com/koulaxizis/oros-portable` and `scoop install oros`, or `winget install koulaxizis.orOS` (once the package is listed there). [Code signing policy](https://github.com/koulaxizis/oros-portable#code-signing-policy)
+
+## Run from a USB stick
+
+### Which file do I download?
 
 | | **orOS-Portable** (full) | **orOS-Portable-lite** |
 |---|---|---|
@@ -18,9 +32,23 @@ Run [orOS](https://useoros.online) from a USB stick on any Windows or Linux PC, 
 
 ---
 
-Τρέχεις το [orOS](https://useoros.online) από ένα USB stick σε οποιονδήποτε υπολογιστή με Windows ή Linux, με ή χωρίς internet. Δωρεάν για πάντα, MIT.
+Εγκαθιστάς το [orOS](https://useoros.online) σε οποιονδήποτε υπολογιστή με Windows ή Linux, ή το τρέχεις από USB stick, με ή χωρίς internet. Δωρεάν για πάντα, MIT.
 
-## Ποιο αρχείο να κατεβάσω;
+## Εγκατάσταση στον υπολογιστή
+
+| | Αρχείο | |
+|---|---|---|
+| **Windows 10/11** | `orOS-Setup-<έκδοση>.exe` | Δεν χρειάζεται διαχειριστής. Μπαίνει στο μενού Έναρξη· αφαιρείται από Ρυθμίσεις › Εφαρμογές. |
+| **Linux (κάθε διανομή)** | `orOS-<έκδοση>-x86_64.AppImage` | Ένα αρχείο χωρίς εγκατάσταση: το κάνεις εκτελέσιμο και διπλό κλικ. Μπαίνει μόνο του στο μενού εφαρμογών. |
+| **Debian, Ubuntu, Mint** | `oros_<έκδοση>_amd64.deb` | Το ανοίγεις με το κέντρο λογισμικού ή `sudo apt install ./oros_*.deb`. Η καλύτερη επιλογή σε Ubuntu 24.04+. |
+
+Το εγκατεστημένο orOS έχει δικό του ιδιωτικό browser (ungoogled-chromium), δουλεύει χωρίς internet και ενημερώνεται μόνο του: οι νέες εκδόσεις του orOS κατεβαίνουν στο παρασκήνιο και ανοίγουν την επόμενη φορά που θα το ξεκινήσεις (ο εγκαταστάτης των Windows και το AppImage αναβαθμίζονται κι αυτά· το .deb σε ειδοποιεί όταν βγει νέα έκδοση). Τα δεδομένα του μένουν σε αυτόν τον υπολογιστή (`%LOCALAPPDATA%\orOS` ή `~/.local/share/oros`), χωριστά από το useoros.online στον browser σου και από κάθε stick: για να τα μεταφέρεις, χρησιμοποίησε το Dropbox sync του orOS. Τα Windows μπορεί να πουν «Τα Windows προστάτευσαν τον υπολογιστή σας», επειδή ο εγκαταστάτης δεν είναι ακόμα υπογεγραμμένος: «Περισσότερες πληροφορίες» › «Εκτέλεση οπωσδήποτε».
+
+Και από ελεύθερους διαχειριστές πακέτων: `scoop bucket add oros https://github.com/koulaxizis/oros-portable` και `scoop install oros`, ή `winget install koulaxizis.orOS` (μόλις καταχωριστεί εκεί). [Code signing policy](https://github.com/koulaxizis/oros-portable#code-signing-policy)
+
+## Από USB stick
+
+### Ποιο αρχείο να κατεβάσω;
 
 | | **orOS-Portable** (πλήρες) | **orOS-Portable-lite** |
 |---|---|---|

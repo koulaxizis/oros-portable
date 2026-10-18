@@ -25,6 +25,26 @@ The address never changes, because the browser ties stored data to it. orOS's se
 
 The lite edition has no bundled browser and uses an installed Chromium, Brave, Edge or Chrome, with a separate `data/profile-system/` profile (a profile from a newer Chromium may not open in an older one). If the bundled browser fails to start (for example a Linux system that blocks its sandbox), the launcher falls back to an installed one.
 
+## Installers
+
+The same launcher and browser also install on a computer (`scripts/build-installers.sh`, built in CI next to the portable zips):
+
+| | File | Installs to |
+|---|---|---|
+| Windows 10/11 | `orOS-Setup-<version>.exe` (Inno Setup, `packaging/windows/orOS.iss`), per user, no admin rights, Start menu entry, uninstaller | `%LOCALAPPDATA%\Programs\orOS` |
+| Linux | `orOS-<version>-x86_64.AppImage` (+ `.zsync` for AppImageUpdate), adds its own menu entry on start (`remove-menu` takes it away) | runs from the file |
+| Debian/Ubuntu | `oros_<version>_amd64.deb`, `/usr/bin/oros`, desktop entry, AppArmor rule that lets the bundled Chromium use its sandbox on Ubuntu 23.10+ | `/opt/oros` |
+
+An `installed` file next to the launcher switches it to installed mode: the browser profile, the log and app updates go to the user's data folder (`%LOCALAPPDATA%\orOS` or `~/.local/share/oros`, `OROS_DATA_DIR` overrides it), and the launcher serves whichever is newer by `APP_VERSION`, the app the installer brought or the one `update` fetched. The address stays `http://localhost:47800/`, but the profile is separate from a stick's, so data moves between them through Dropbox sync. `scripts/test-installers.sh` and `scripts/test-windows-setup.ps1` install, run and remove each package in CI.
+
+Installed copies update themselves (`launcher/autoupdate.go`; portable copies keep the manual `update`). At most every 6 hours, while orOS is open, the launcher checks GitHub in the background: a new commit on orOS `main` is downloaded into `app.next` and swapped in at the next start, never under an open window. A new release of this repo is downloaded too and checked against its `.sha256` asset: the Windows setup then runs silently at the next start (`/RELAUNCH=1` opens orOS again), the AppImage replaces its own file, the .deb is offered at the next start and installed with `pkexec apt-get install` (the desktop's own password prompt), and a Scoop install leaves new releases to `scoop update`. The Windows setup asks whether to update automatically and writes a `no-auto-update` file in the data folder when you say no; that file, or `OROS_NO_AUTO_UPDATE`, turns it off. Test builds (`0.0.0-<sha>`) never update.
+
+### Install channels
+
+- **Scoop:** `scoop bucket add oros https://github.com/koulaxizis/oros-portable` then `scoop install oros`. The release workflow writes `bucket/oros.json` (from `packaging/scoop/oros.json.in`) to `main`.
+- **winget:** `winget install koulaxizis.orOS`. The release workflow submits the manifests (`packaging/winget/`) to microsoft/winget-pkgs when the `WINGET_TOKEN` secret holds a classic token with `public_repo` scope.
+- An apt repository is not offered: the .deb (about 185 MB, mostly the browser) is above GitHub Pages' 100 MB file limit, so the .deb updates itself instead.
+
 ## Commands
 
 | | |
@@ -32,6 +52,7 @@ The lite edition has no bundled browser and uses an installed Chromium, Brave, E
 | `orOS` | start orOS |
 | `orOS update` | download the latest orOS from GitHub into `app/` (previous kept as `app.old/`) |
 | `orOS serve` | only run the server, for debugging |
+| `orOS remove-menu` | remove the menu entry that the AppImage added |
 
 `OROS_PORTABLE_BROWSER` and `OROS_PORTABLE_BROWSER_ARGS` override the browser and add flags (used by tests).
 
@@ -68,6 +89,19 @@ parts inside ungoogled-chromium.
 - Close the orOS window before removing the stick; pulling it out while the browser writes can corrupt the profile.
 - Dropbox sign-in returns to `http://localhost:47800/`, which must be listed as a redirect URI in the orOS Dropbox app.
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by [SignPath Foundation](https://signpath.org) (applied for; until it is granted the Windows files are unsigned and SmartScreen warns once).
+
+- Committers and reviewers: [Chris (koulaxizis)](https://github.com/koulaxizis)
+- Approvers: [Chris (koulaxizis)](https://github.com/koulaxizis)
+
+Signed: the orOS launcher (`orOS.exe`) and the Windows setup (`orOS-Setup-*.exe`), built from this repository by GitHub Actions. The bundled ungoogled-chromium is included unmodified and is not signed by us.
+
+Privacy: the installed orOS checks GitHub for updates (the orOS web app and new releases of this repository) at most every 6 hours; the setup lets you turn this off. It sends nothing else anywhere unless you ask it to (for example Dropbox sync). See the [privacy policy](https://useoros.online/privacy.html).
+
 ## Licences
+
+Third-party libraries, fonts, icons and data files bundled with orOS keep their own licences; see CREDITS.md in the orOS repository.
 
 orOS Portable: MIT. ungoogled-chromium: BSD-3-Clause, with LGPL and other open-source components (top-level licences in `LICENSES/`; the full component list is at `chrome://credits` in the bundled browser). Sources: `SOURCES.txt`, written offer: `WRITTEN-OFFER.txt`.

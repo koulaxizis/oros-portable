@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=orOS
+GenericName=Offline-first workspace
+GenericName[el]=Χώρος εργασίας χωρίς σύνδεση
+Comment=Notes, calendar, files, office and games, offline and private
+Comment[el]=Σημειώσεις, ημερολόγιο, αρχεία, γραφείο και παιχνίδια, χωρίς σύνδεση και ιδιωτικά
+Exec=oros
+Icon=oros
+Terminal=false
+Categories=Office;
+Keywords=notes;calendar;todo;office;offline;
