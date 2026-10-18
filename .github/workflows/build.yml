@@ -93,6 +93,45 @@ jobs:
             out/installers/*.AppImage out/installers/*.zsync out/installers/*.deb out/installers/*.sha256 \
             --title "orOS $TAG" --notes-file dist-extra/RELEASE-NOTES.md
 
+  aur-test:
+    # Builds the AUR package (oros-bin) from this run's .deb with makepkg on
+    # Arch, installs it with pacman, checks that it serves orOS, removes it.
+    needs: package
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: orOS-Portable
+          path: dist
+      - name: makepkg, pacman -U, serve, pacman -R
+        shell: bash
+        run: |
+          pacman -Syu --noconfirm --needed base-devel python curl
+          useradd -m builder
+          DEB="$(ls dist/installers/oros_*_amd64.deb)"
+          VERSION="$(basename "$DEB" | sed -E 's/^oros_(.*)_amd64\.deb$/\1/')"
+          # Test builds are "0.0.0~<sha>"; pacman versions may not hold "~" or "-".
+          PKGVER="${VERSION%%~*}"
+          scripts/channel-manifests.sh "$PKGVER" "$(printf '0%.0s' {1..64})" /tmp/ch "$(sha256sum "$DEB" | cut -d' ' -f1)"
+          install -d -o builder /tmp/aur
+          cp /tmp/ch/aur/PKGBUILD /tmp/aur/
+          cp "$DEB" "/tmp/aur/oros_${PKGVER}_amd64.deb"
+          chown -R builder /tmp/aur
+          su builder -c 'cd /tmp/aur && makepkg --nodeps'
+          pacman -U --noconfirm /tmp/aur/oros-bin-*.pkg.tar.zst
+          test -f /usr/lib/oros/package-managed && test -x /usr/lib/oros/browser/linux/chrome
+          su builder -c 'oros serve > /tmp/serve.log 2>&1 &'
+          for i in $(seq 30); do curl -fs http://localhost:47800/ >/dev/null && break; sleep 1; done
+          page="$(curl -fs http://localhost:47800/)"
+          grep -q "<title>orOS" <<<"$page"
+          test -f /home/builder/.local/share/oros/launcher.log
+          pkill -f "/usr/lib/oros/orOS serve" || true
+          pacman -R --noconfirm oros-bin
+          test ! -e /usr/lib/oros && test ! -e /usr/bin/oros
+          echo "ok: oros-bin builds, installs, serves orOS and removes cleanly"
+
   windows-setup:
     needs: package
     runs-on: windows-latest
@@ -140,8 +179,10 @@ jobs:
     # Free install channels that point at the release: the Scoop bucket in
     # this repo (scoop bucket add oros https://github.com/koulaxizis/oros-portable)
     # and winget (a pull request to microsoft/winget-pkgs, needs the
-    # WINGET_TOKEN secret: a classic token with public_repo scope).
-    needs: windows-setup
+    # WINGET_TOKEN secret: a classic token with public_repo scope), and the
+    # AUR package oros-bin (needs the AUR_SSH_KEY secret: the private key of
+    # the maintainer's AUR account).
+    needs: [windows-setup, aur-test]
     if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
     runs-on: ubuntu-latest
     steps:
@@ -154,9 +195,10 @@ jobs:
           TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           VERSION="${TAG#v}"
-          gh release download "$TAG" --pattern "orOS-Setup-$VERSION.exe.sha256" --dir /tmp/sum
-          SHA="$(cut -d' ' -f1 /tmp/sum/*.sha256)"
-          scripts/channel-manifests.sh "$VERSION" "$SHA" out/channels
+          gh release download "$TAG" --pattern "orOS-Setup-$VERSION.exe.sha256" --pattern "oros_${VERSION}_amd64.deb.sha256" --dir /tmp/sum
+          SHA="$(cut -d' ' -f1 "/tmp/sum/orOS-Setup-$VERSION.exe.sha256")"
+          DEBSHA="$(cut -d' ' -f1 "/tmp/sum/oros_${VERSION}_amd64.deb.sha256")"
+          scripts/channel-manifests.sh "$VERSION" "$SHA" out/channels "$DEBSHA"
       - uses: actions/upload-artifact@v4
         with:
           name: winget-manifests
@@ -174,6 +216,26 @@ jobs:
           git commit -m "Scoop: orOS ${TAG#v} [skip ci]"
           for i in 1 2 3; do git pull --rebase -q origin main && git push origin HEAD:main && exit 0; sleep 5; done
           exit 1
+      - name: Update the AUR package
+        env:
+          AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          if [ -z "$AUR_SSH_KEY" ]; then echo "No AUR_SSH_KEY secret: skipping the AUR."; exit 0; fi
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$AUR_SSH_KEY" > ~/.ssh/aur && chmod 600 ~/.ssh/aur
+          # Trust on first use: the job only pushes the PKGBUILD, which names checksummed release files.
+          ssh-keyscan -t ed25519 aur.archlinux.org > ~/.ssh/known_hosts
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/aur -o UserKnownHostsFile=$HOME/.ssh/known_hosts"
+          git clone ssh://aur@aur.archlinux.org/oros-bin.git /tmp/aur
+          cp out/channels/aur/PKGBUILD out/channels/aur/.SRCINFO /tmp/aur/
+          cd /tmp/aur
+          git config user.name "koulaxizis"
+          git config user.email "koulaxizis@users.noreply.github.com"
+          git add PKGBUILD .SRCINFO
+          git diff --cached --quiet && exit 0
+          git commit -m "orOS ${TAG#v}"
+          git push origin HEAD:master
 
   winget:
     needs: channels

@@ -251,3 +251,17 @@ func TestPendingDebPicksNewest(t *testing.T) {
 		t.Fatal("a version is offered once")
 	}
 }
+
+func TestPackageManagedCopiesLeaveReleasesToTheirPackageManager(t *testing.T) {
+	root := t.TempDir()
+	lay := layout{root: root}
+	if packageManaged(lay) {
+		t.Fatal("no marker yet")
+	}
+	if err := os.WriteFile(filepath.Join(root, "package-managed"), []byte("aur\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !packageManaged(lay) {
+		t.Fatal("the package-managed marker was not seen")
+	}
+}

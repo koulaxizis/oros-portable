@@ -189,8 +189,8 @@ func checkProgramUpdate(lay layout) error {
 		return nil
 	}
 	switch {
-	case managedByScoop(lay):
-		return nil // "scoop update" brings new releases
+	case managedByScoop(lay) || packageManaged(lay):
+		return nil // "scoop update", pacman or flatpak bring new releases
 	case runtime.GOOS == "windows":
 		_, err = download(rel, setupName(rel.version()), filepath.Join(updatesDir(lay), setupName(rel.version())))
 		if err == nil {
@@ -213,8 +213,16 @@ func managedByScoop(lay layout) bool {
 	return strings.Contains(strings.ToLower(filepath.ToSlash(lay.root)), "/scoop/apps/")
 }
 
+// packageManaged: a "package-managed" file next to the launcher marks a copy
+// that a package manager (AUR/pacman, Flatpak) installed and updates; the
+// launcher still updates the orOS app itself, but never its own files.
+func packageManaged(lay layout) bool {
+	_, err := os.Stat(filepath.Join(lay.root, "package-managed"))
+	return err == nil
+}
+
 func isDebInstall(lay layout) bool {
-	return runtime.GOOS == "linux" && filepath.ToSlash(lay.root) == "/opt/oros"
+	return runtime.GOOS == "linux" && filepath.ToSlash(lay.root) == "/opt/oros" && !packageManaged(lay)
 }
 
 func debName(ver string) string { return "oros_" + ver + "_amd64.deb" }
