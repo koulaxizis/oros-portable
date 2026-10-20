@@ -40,6 +40,8 @@ echo "$VERSION" > "$OUT/windows/VERSION"
 echo "== AppImage"
 APPDIR="$WORK/orOS.AppDir"
 stage "$APPDIR/usr/lib/oros" linux
+# The AppImage runtime in front of the file is linked with libfuse (LGPL-2.1).
+cp "$ROOT/packaging/linux/licenses/"* "$APPDIR/usr/lib/oros/LICENSES/"
 cp "$ROOT/packaging/linux/AppRun" "$APPDIR/AppRun"
 cp "$ROOT/packaging/linux/oros.desktop" "$APPDIR/oros.desktop"
 cp "$ROOT/packaging/linux/oros.png" "$APPDIR/oros.png"
@@ -67,7 +69,16 @@ ln -s /opt/oros/orOS "$DEB/usr/bin/oros"
 cp "$ROOT/packaging/linux/oros.desktop" "$DEB/usr/share/applications/oros.desktop"
 cp "$ROOT/packaging/linux/oros.png" "$DEB/usr/share/icons/hicolor/512x512/apps/oros.png"
 cp "$ROOT/packaging/linux/apparmor-oros-chromium" "$DEB/usr/share/oros/"
-cp "$ROOT/LICENSE" "$DEB/usr/share/doc/oros/copyright"
+{
+  printf '%s\n' "orOS (this package): MIT, see below." \
+    "/opt/oros/browser/linux is ungoogled-chromium, BSD-3-Clause, with open-source" \
+    "components under their own licences (LGPL, MPL, Apache-2.0, MIT and more);" \
+    "the launcher is built with Go (BSD-3-Clause). Credits and every licence" \
+    "text: /opt/oros/LICENSES (CREDITS.txt first). Sources: /opt/oros/SOURCES.txt," \
+    "written offer: /opt/oros/WRITTEN-OFFER.txt. The orOS web app's own credits:" \
+    "/opt/oros/app/CREDITS.md." ""
+  cat "$ROOT/LICENSE"
+} > "$DEB/usr/share/doc/oros/copyright"
 cp "$ROOT/packaging/linux/debian/postinst" "$ROOT/packaging/linux/debian/postrm" "$DEB/DEBIAN/"
 # Debian versions may not contain "-<sha>" from test builds as is; "~"
 # sorts them below the real release.

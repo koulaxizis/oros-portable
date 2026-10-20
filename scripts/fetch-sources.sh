@@ -46,5 +46,13 @@ if [ -z "$done" ]; then
   echo "  WARNING: no Chromium tarball under 2 GiB; WRITTEN-OFFER.txt covers it"
 fi
 
+echo "== AppImage runtime (Linux AppImage)"
+# The runtime is MIT and statically links libfuse (LGPL-2.1); ship its build
+# scripts and the libfuse and squashfuse releases they pin.
+get "https://github.com/AppImage/type2-runtime/archive/refs/heads/main.tar.gz" "appimage-type2-runtime-src.tar.gz"
+get "https://github.com/AppImage/appimagetool/archive/refs/tags/1.9.0.tar.gz" "appimagetool-1.9.0-src.tar.gz"
+get "https://github.com/libfuse/libfuse/releases/download/fuse-3.15.0/fuse-3.15.0.tar.xz" "fuse-3.15.0.tar.xz"
+get "https://github.com/vasi/squashfuse/archive/0.5.2.tar.gz" "squashfuse-0.5.2-src.tar.gz"
+
 (cd "$SRC" && sha256sum -- * > SHA256SUMS-src.txt)
 ls -lh "$SRC"

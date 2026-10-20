@@ -32,10 +32,18 @@ check_serves() { # check_serves <name> <command...>
 
 sudo apt-get install -y -q "$DEB"
 test -x /opt/oros/browser/linux/chrome && test -f /opt/oros/installed
+for f in CREDITS.txt Go-BSD.txt Chromium-BSD.txt ungoogled-chromium-BSD.txt; do test -s "/opt/oros/LICENSES/$f"; done
+grep -q ungoogled-chromium /usr/share/doc/oros/copyright
+echo "ok: deb carries the licences"
 check_serves deb oros
 sudo apt-get remove -y -q oros
 test ! -e /opt/oros && test ! -e /usr/bin/oros
 echo "ok: deb removed cleanly"
 
 chmod +x "$IMG"
+# The runtime's LGPL notice travels inside the AppImage.
+(x="$(mktemp -d)" && cd "$x" && "$IMG" --appimage-extract 'usr/lib/oros/LICENSES/*' >/dev/null &&
+  test -s squashfs-root/usr/lib/oros/LICENSES/AppImage-runtime.txt &&
+  test -s squashfs-root/usr/lib/oros/LICENSES/LGPL-2.1.txt && rm -rf "$x")
+echo "ok: AppImage carries the runtime's licences"
 check_serves AppImage "$IMG"

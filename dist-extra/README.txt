@@ -25,7 +25,10 @@ internet, και ενώνει τα δεδομένα του USB με τις άλ�
 Η πλήρης έκδοση έχει μέσα το ungoogled-chromium (άδεια BSD, βλ. φάκελο LICENSES).
 Η lite έκδοση χρησιμοποιεί εγκατεστημένο Chromium, Brave, Edge ή Chrome.
 
-Licences: LICENSES folder. Source code: SOURCES.txt and WRITTEN-OFFER.txt.
-Άδειες: φάκελος LICENSES. Πηγαίος κώδικας: SOURCES.txt και WRITTEN-OFFER.txt.
+Credits and licences: LICENSES folder (CREDITS.txt first); orOS's own credits
+are in app/CREDITS.md. Source code: SOURCES.txt and WRITTEN-OFFER.txt.
+Μνείες και άδειες: φάκελος LICENSES (πρώτα το CREDITS.txt)· οι μνείες του
+ίδιου του orOS είναι στο app/CREDITS.md. Πηγαίος κώδικας: SOURCES.txt και
+WRITTEN-OFFER.txt.
 
 MIT licence, free forever. https://github.com/koulaxizis/oros-portable

@@ -31,5 +31,13 @@ Both are built from Chromium $CHROMIUM with the ungoogled-chromium patches:
   https://github.com/ungoogled-software/ungoogled-chromium
   https://commondatastorage.googleapis.com/chromium-browser-official/chromium-$CHROMIUM.tar.xz
 
-Licences: see the LICENSES folder. Written offer for source code: WRITTEN-OFFER.txt.
+Installers only (built from the full edition above):
+  Windows setup: made with Inno Setup (Inno Setup License)
+    https://jrsoftware.org/isinfo.php
+  Linux AppImage: the AppImage runtime (MIT, statically linked with libfuse,
+  LGPL-2.1) added by appimagetool 1.9.0; complete source and build scripts:
+    https://github.com/AppImage/type2-runtime
+    https://github.com/AppImage/appimagetool/tree/1.9.0
+
+Licences: see the LICENSES folder (CREDITS.txt first). Written offer for source code: WRITTEN-OFFER.txt.
 TXT

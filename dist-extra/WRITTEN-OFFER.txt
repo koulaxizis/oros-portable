@@ -3,7 +3,8 @@ Written offer for source code
 
 EN
 This orOS Portable copy contains programs under the GNU GPL and LGPL (inside
-ungoogled-chromium) and other free licences. SOURCES.txt lists the exact source
+ungoogled-chromium, and libfuse inside the AppImage runtime of the Linux
+AppImage) and other free licences. SOURCES.txt lists the exact source
 of every program, and the release page carries copies of the third-party
 source archives.
 
@@ -17,7 +18,8 @@ and name the version written in SOURCES.txt.
 
 EL
 Αυτό το αντίγραφο του orOS Portable περιέχει προγράμματα με άδειες GNU GPL και
-LGPL (μέσα στο ungoogled-chromium) και άλλες ελεύθερες άδειες. Το SOURCES.txt
+LGPL (μέσα στο ungoogled-chromium, και το libfuse μέσα στο AppImage runtime
+του Linux AppImage) και άλλες ελεύθερες άδειες. Το SOURCES.txt
 δείχνει τον ακριβή πηγαίο κώδικα κάθε προγράμματος, και η σελίδα του release
 έχει αντίγραφα των πηγαίων αρχείων.
 
