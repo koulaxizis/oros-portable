@@ -100,8 +100,15 @@ Signed: the orOS launcher (`orOS.exe`) and the Windows setup (`orOS-Setup-*.exe`
 
 Privacy: the installed orOS checks GitHub for updates (the orOS web app and new releases of this repository) at most every 6 hours; the setup lets you turn this off. It sends nothing else anywhere unless you ask it to (for example Dropbox sync). See the [privacy policy](https://useoros.online/privacy.html).
 
-## Licences
+## Credits and licences
 
-Third-party libraries, fonts, icons and data files bundled with orOS keep their own licences; see CREDITS.md in the orOS repository.
+orOS Portable: MIT. It stands on the work of:
 
-orOS Portable: MIT. ungoogled-chromium: BSD-3-Clause, with LGPL and other open-source components (top-level licences in `LICENSES/`; the full component list is at `chrome://credits` in the bundled browser). Sources: `SOURCES.txt`, written offer: `WRITTEN-OFFER.txt`.
+- [ungoogled-chromium](https://github.com/ungoogled-software/ungoogled-chromium) and its contributors, the browser in the full edition and the installers: BSD-3-Clause.
+- [Chromium](https://www.chromium.org/) by The Chromium Authors, which ungoogled-chromium is built from: BSD-3-Clause, with LGPL, MPL, Apache-2.0, MIT and other open-source components (full list at `chrome://credits` in the bundled browser).
+- [Go](https://go.dev/) by The Go Authors, the launcher's language and standard library: BSD-3-Clause.
+- [Inno Setup](https://jrsoftware.org/isinfo.php) by Jordan Russell and Martijn Laan, the Windows setup (Inno Setup License); Greek texts from Inno Setup's translation by Anastasis Chatzioglou, XhmikosR and Vasileios Karamichail.
+- [appimagetool](https://github.com/AppImage/appimagetool) and the [AppImage runtime](https://github.com/AppImage/type2-runtime) (MIT, linked with libfuse under LGPL-2.1, squashfuse, zstd, zlib, mimalloc and musl), the Linux AppImage.
+- The orOS web app's libraries, fonts, data and services are credited in [CREDITS.md](https://github.com/koulaxizis/oros/blob/main/CREDITS.md) of the orOS repository (`app/CREDITS.md` in every build).
+
+Every build carries `LICENSES/` (`CREDITS.txt`, orOS and orOS Portable MIT, `Go-BSD.txt`; the full edition also `ungoogled-chromium-BSD.txt` and `Chromium-BSD.txt`; the AppImage also `AppImage-runtime.txt` and `LGPL-2.1.txt`), `SOURCES.txt` with the exact source of every program, and `WRITTEN-OFFER.txt`. The .deb's `/usr/share/doc/oros/copyright` points to them.

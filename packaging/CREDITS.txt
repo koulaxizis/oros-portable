@@ -1,0 +1,33 @@
+orOS Portable: credits and licences
+===================================
+
+orOS Portable and the orOS installers are free software (MIT), made by
+Christos Koulaxizis with the work of many others. Thank you to:
+
+- The ungoogled-chromium project and its contributors: the browser in the
+  full edition and the installers (browser/), BSD-3-Clause.
+  https://github.com/ungoogled-software/ungoogled-chromium
+  Licence: ungoogled-chromium-BSD.txt
+- The Chromium Authors: Chromium, which ungoogled-chromium is built from,
+  BSD-3-Clause with hundreds of open-source components under their own
+  licences (LGPL, MPL, Apache-2.0, MIT and more). Licence: Chromium-BSD.txt;
+  the full list of components with their licences is chrome://credits in the
+  bundled browser.
+- The Go Authors: the Go language and standard library the launcher (orOS,
+  orOS.exe) is built with, BSD-3-Clause. Licence: Go-BSD.txt
+  https://go.dev/
+- Jordan Russell and Martijn Laan: Inno Setup, which makes the Windows setup
+  (orOS-Setup-*.exe), under the Inno Setup License.
+  https://jrsoftware.org/isinfo.php
+  Greek setup texts: Inno Setup's Greek translation by Anastasis Chatzioglou,
+  XhmikosR and Vasileios Karamichail.
+- The AppImage project (probonopd and contributors): appimagetool and the
+  AppImage runtime in the Linux .AppImage, MIT, with libfuse (LGPL-2.1),
+  squashfuse, zstd, zlib, mimalloc and musl. Details: AppImage-runtime.txt
+  (in the AppImage only).
+- The orOS web app (app/) has its own credits for every library, font, data
+  set and online service it uses: app/CREDITS.md, or in orOS: Info, then
+  "Credits & licences".
+
+Licences of this build: the files in this LICENSES folder.
+Exact source of every program: SOURCES.txt. Written offer: WRITTEN-OFFER.txt.

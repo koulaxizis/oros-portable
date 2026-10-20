@@ -65,6 +65,9 @@ for dir in "$LITE" "$FULL"; do
   mkdir -p "$dir/LICENSES"
   cp "$ROOT/LICENSE" "$dir/LICENSES/orOS-Portable-MIT.txt"
   if [ -f "$dir/app/LICENSE" ]; then cp "$dir/app/LICENSE" "$dir/LICENSES/orOS-MIT.txt"; fi
+  cp "$ROOT/packaging/CREDITS.txt" "$dir/LICENSES/CREDITS.txt"
+  # The launcher is a Go program: the Go standard library's licence goes with it.
+  cp "$(go env GOROOT)/LICENSE" "$dir/LICENSES/Go-BSD.txt"
   cp "$OUT/SOURCES.txt" "$dir/SOURCES.txt"
 done
 # The browser packages carry no licence files of their own (the full list of
