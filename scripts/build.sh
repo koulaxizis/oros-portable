@@ -66,8 +66,14 @@ for dir in "$LITE" "$FULL"; do
   cp "$ROOT/LICENSE" "$dir/LICENSES/orOS-Portable-MIT.txt"
   if [ -f "$dir/app/LICENSE" ]; then cp "$dir/app/LICENSE" "$dir/LICENSES/orOS-MIT.txt"; fi
   cp "$ROOT/packaging/CREDITS.txt" "$dir/LICENSES/CREDITS.txt"
-  # The launcher is a Go program: the Go standard library's licence goes with it.
+  # The launcher is a Go program: the Go standard library's licence goes with it,
+  # and those of the Go modules it is built with (go.mod: the tray icon).
   cp "$(go env GOROOT)/LICENSE" "$dir/LICENSES/Go-BSD.txt"
+  for m in "fyne.io/systray:systray-Apache-2.0.txt" "github.com/godbus/dbus/v5:godbus-BSD-2.txt" \
+           "golang.org/x/sys:golang-x-sys-BSD.txt"; do
+    mdir="$(cd "$ROOT/launcher" && go list -m -f '{{.Dir}}' "${m%%:*}")"
+    cp "$mdir/LICENSE" "$dir/LICENSES/${m#*:}"
+  done
   cp "$OUT/SOURCES.txt" "$dir/SOURCES.txt"
 done
 # The browser packages carry no licence files of their own (the full list of

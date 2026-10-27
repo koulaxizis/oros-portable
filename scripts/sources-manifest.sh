@@ -16,6 +16,8 @@ attached to the release page (files ending in -src):
 
 orOS Portable launcher (MIT)
   https://github.com/koulaxizis/oros-portable/tree/v$VERSION
+  Go modules (launcher/go.mod, exact versions in launcher/go.sum): fyne.io/systray
+  (Apache-2.0), github.com/godbus/dbus/v5 (BSD-2-Clause), golang.org/x/sys (BSD-3-Clause)
 
 orOS web app (MIT), commit $OROS_COMMIT
   https://github.com/koulaxizis/oros/tree/$OROS_COMMIT

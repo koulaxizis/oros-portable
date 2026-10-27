@@ -16,6 +16,12 @@ Christos Koulaxizis with the work of many others. Thank you to:
 - The Go Authors: the Go language and standard library the launcher (orOS,
   orOS.exe) is built with, BSD-3-Clause. Licence: Go-BSD.txt
   https://go.dev/
+- The Go modules the launcher uses for its tray icon (installed copies):
+  fyne.io/systray by the Fyne.io developers and the getlantern/systray
+  authors, Apache-2.0 (systray-Apache-2.0.txt); godbus/dbus by the godbus
+  authors, BSD-2-Clause (godbus-BSD-2.txt); golang.org/x/sys by the Go
+  Authors, BSD-3-Clause (golang-x-sys-BSD.txt).
+  https://github.com/fyne-io/systray https://github.com/godbus/dbus
 - Jordan Russell and Martijn Laan: Inno Setup, which makes the Windows setup
   (orOS-Setup-*.exe), under the Inno Setup License.
   https://jrsoftware.org/isinfo.php
