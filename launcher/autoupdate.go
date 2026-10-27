@@ -50,13 +50,14 @@ func autoUpdatesOn(lay layout) bool {
 }
 
 // beforeStart applies what a previous run downloaded. It returns true when
-// it handed over to the Windows setup and the launcher should exit.
-func beforeStart(lay layout) bool {
+// it handed over to the Windows setup and the launcher should exit. tray:
+// the tray is starting, so a new version starts the tray again, not a window.
+func beforeStart(lay layout, tray bool) bool {
 	// Another orOS window is open and serving: change nothing under it.
 	if !autoUpdatesOn(lay) || alreadyRunning() {
 		return false
 	}
-	if runPendingSetup(lay) || (isDebInstall(lay) && runPendingDeb(lay)) {
+	if runPendingSetup(lay, tray) || (isDebInstall(lay) && runPendingDeb(lay, tray)) {
 		return true
 	}
 	applyStagedApp(lay)
@@ -237,7 +238,7 @@ func fetchDeb(lay layout, rel release) error {
 // runPendingDeb asks, once per version, to install a downloaded .deb.
 // pkexec shows the desktop's own password prompt and apt keeps the
 // dependencies right. After the install the new orOS starts in our place.
-func runPendingDeb(lay layout) bool {
+func runPendingDeb(lay layout, tray bool) bool {
 	deb, ver := pendingFile(lay, "oros_", "_amd64.deb")
 	if deb == "" || triedBefore(lay, ver) {
 		return false
@@ -256,10 +257,18 @@ func runPendingDeb(lay layout) bool {
 		return false
 	}
 	_ = os.Remove(deb)
-	if err := exec.Command(filepath.Join(lay.root, "orOS")).Start(); err != nil {
+	if err := exec.Command(filepath.Join(lay.root, "orOS"), relaunchArgs(tray)...).Start(); err != nil {
 		return false
 	}
 	return true
+}
+
+// relaunchArgs: what a freshly installed launcher starts with.
+func relaunchArgs(tray bool) []string {
+	if tray {
+		return []string{"tray"}
+	}
+	return nil
 }
 
 func setupName(ver string) string    { return "orOS-Setup-" + ver + ".exe" }
@@ -383,14 +392,18 @@ func triedBefore(lay layout, ver string) bool {
 
 // runPendingSetup starts a downloaded setup silently. The setup closes
 // nothing (orOS has not opened yet), replaces the program and starts orOS
-// again (/RELAUNCH=1).
-func runPendingSetup(lay layout) bool {
+// again (/RELAUNCH=1), or the tray (/RELAUNCH=tray).
+func runPendingSetup(lay layout, tray bool) bool {
 	setup, ver := pendingSetup(lay)
 	if setup == "" || triedBefore(lay, ver) {
 		return false
 	}
 	log.Printf("installing orOS %s", ver)
-	cmd := exec.Command(setup, "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CURRENTUSER", "/RELAUNCH=1")
+	relaunch := "/RELAUNCH=1"
+	if tray {
+		relaunch = "/RELAUNCH=tray"
+	}
+	cmd := exec.Command(setup, "/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CURRENTUSER", relaunch)
 	if err := cmd.Start(); err != nil {
 		log.Printf("setup: %v", err)
 		return false

@@ -52,9 +52,21 @@ el.DeleteData=Να σβηστούν και τα δεδομένα του orOS σ�
 en.AutoUpdate=Keep orOS up to date automatically (checks GitHub at most every 6 hours)
 el.AutoUpdate=Αυτόματη ενημέρωση του orOS (έλεγχος στο GitHub το πολύ κάθε 6 ώρες)
 
+en.AutoStart=Start orOS in the tray with Windows (click it to add a task or search)
+el.AutoStart=Εκκίνηση του orOS στο tray μαζί με τα Windows (κλικ για προσθήκη εργασίας ή αναζήτηση)
+
+en.QuickName=orOS Add or search
+el.QuickName=orOS Προσθήκη ή αναζήτηση
+
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 Name: "autoupdate"; Description: "{cm:AutoUpdate}"
+; Off by default (Quick window plan, 2026-10-27); the tray menu turns it on or off too.
+Name: "autostart"; Description: "{cm:AutoStart}"; Flags: unchecked
+
+[Registry]
+; The same value as the tray's "Start with the computer" (launcher autostart_windows.go).
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "orOS"; ValueData: """{app}\orOS.exe"" tray"; Tasks: autostart; Flags: uninsdeletevalue
 
 [InstallDelete]
 ; A new browser or app version replaces the old folders completely.
@@ -67,12 +79,21 @@ Source: "files\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createa
 [Icons]
 Name: "{userprograms}\orOS"; Filename: "{app}\orOS.exe"; WorkingDir: "{app}"
 Name: "{userprograms}\Update orOS"; Filename: "{app}\orOS.exe"; Parameters: "update"; WorkingDir: "{app}"
+Name: "{userprograms}\{cm:QuickName}"; Filename: "{app}\orOS.exe"; Parameters: "quick"; WorkingDir: "{app}"
 Name: "{userdesktop}\orOS"; Filename: "{app}\orOS.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\orOS.exe"; Description: "{cm:LaunchProgram,orOS}"; Flags: nowait postinstall skipifsilent
 ; An automatic update runs this setup silently with /RELAUNCH=1: open orOS again.
 Filename: "{app}\orOS.exe"; Flags: nowait; Check: Relaunch
+; The tray handed over to this setup (/RELAUNCH=tray): start the tray again.
+Filename: "{app}\orOS.exe"; Parameters: "tray"; Flags: nowait; Check: RelaunchTray
+; Chosen here: the tray starts now too (a second one stops at its lock).
+Filename: "{app}\orOS.exe"; Parameters: "tray"; Flags: nowait skipifsilent; Tasks: autostart
+
+[UninstallRun]
+; The tray keeps orOS.exe running; stop it so its files can go.
+Filename: "{sys}\taskkill.exe"; Parameters: "/F /IM orOS.exe"; Flags: runhidden; RunOnceId: "StopOrOS"
 
 [Code]
 // The launcher skips its automatic updates while this file exists.
@@ -98,10 +119,18 @@ begin
   Result := ExpandConstant('{param:RELAUNCH|0}') = '1';
 end;
 
+function RelaunchTray(): Boolean;
+begin
+  Result := ExpandConstant('{param:RELAUNCH|0}') = 'tray';
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   Data: String;
 begin
+  // "Start with the computer" may have been turned on in the tray menu.
+  if CurUninstallStep = usUninstall then
+    RegDeleteValue(HKEY_CURRENT_USER, 'Software\Microsoft\Windows\CurrentVersion\Run', 'orOS');
   if (CurUninstallStep = usPostUninstall) and not UninstallSilent() then
   begin
     Data := ExpandConstant('{localappdata}\orOS');

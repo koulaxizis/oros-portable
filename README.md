@@ -39,6 +39,12 @@ An `installed` file next to the launcher switches it to installed mode: the brow
 
 Installed copies update themselves (`launcher/autoupdate.go`; portable copies keep the manual `update`). At most every 6 hours, while orOS is open, the launcher checks GitHub in the background: a new commit on orOS `main` is downloaded into `app.next` and swapped in at the next start, never under an open window. A new release of this repo is downloaded too and checked against its `.sha256` asset: the Windows setup then runs silently at the next start (`/RELAUNCH=1` opens orOS again), the AppImage replaces its own file, the .deb is offered at the next start and installed with `pkexec apt-get install` (the desktop's own password prompt), and a Scoop install leaves new releases to `scoop update`. The Windows setup asks whether to update automatically and writes a `no-auto-update` file in the data folder when you say no; that file, or `OROS_NO_AUTO_UPDATE`, turns it off. Test builds (`0.0.0-<sha>`) never update.
 
+### Tray: add or search (installed copies)
+
+`orOS tray` puts the orOS icon in the system tray (`launcher/tray.go`). A click opens a small window with orOS's command bar (`http://localhost:47800/#quick-win`): type a task and press Enter, or search your orOS data; Escape closes the window. The menu has Add or search, Open orOS, Start with the computer (off until you turn it on: `HKCU\...\Run` value `orOS` on Windows, `~/.config/autostart/oros-tray.desktop` on Linux) and Quit. On Windows, Ctrl+Alt+Shift+Space opens the small window from anywhere. The tray keeps the loopback server up, never reads orOS data (it stays in the browser profile) and runs once per user (`tray.lock` in the data folder). It applies a downloaded orOS, or hands over to a new program version, only while no orOS window is open.
+
+`orOS quick` opens the same small window from a command: the Start menu entry "orOS Add or search", the "Add or search" action of the Linux menu entry, or a keyboard shortcut you set in your desktop's settings (Wayland gives apps no global shortcut). Plain GNOME shows no tray icons without the AppIndicator extension; `quick` works there too. The Windows setup offers "Start orOS in the tray with Windows" (unticked) and its uninstaller stops the tray and removes the Run value.
+
 ### Install channels
 
 - **Scoop:** `scoop bucket add oros https://github.com/koulaxizis/oros-portable` then `scoop install oros`. The release workflow writes `bucket/oros.json` (from `packaging/scoop/oros.json.in`) to `main`.
@@ -52,7 +58,9 @@ Installed copies update themselves (`launcher/autoupdate.go`; portable copies ke
 | `orOS` | start orOS |
 | `orOS update` | download the latest orOS from GitHub into `app/` (previous kept as `app.old/`) |
 | `orOS serve` | only run the server, for debugging |
-| `orOS remove-menu` | remove the menu entry that the AppImage added |
+| `orOS remove-menu` | remove the menu entry that the AppImage added (and its start at login) |
+| `orOS tray` | installed copies: the tray icon (see Tray) |
+| `orOS quick` | the small "Add or search" window |
 
 `OROS_PORTABLE_BROWSER` and `OROS_PORTABLE_BROWSER_ARGS` override the browser and add flags (used by tests).
 

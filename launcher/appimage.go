@@ -48,20 +48,25 @@ func writeAppImageMenu(img, iconSrc, desktop, icon string) error {
 			return err
 		}
 	}
-	// Desktop Entry quoting: the path goes in double quotes with \, ", `
-	// and $ escaped.
-	q := strings.NewReplacer(`\`, `\\\\`, `"`, `\\"`, "`", "\\\\`", `$`, `\\$`).Replace(img)
+	q := desktopQuote(img)
 	entry := fmt.Sprintf(`[Desktop Entry]
 Type=Application
 Name=orOS
 Comment=Notes, calendar, files, office and games, offline and private
 Comment[el]=Σημειώσεις, ημερολόγιο, αρχεία, γραφείο και παιχνίδια, χωρίς σύνδεση και ιδιωτικά
-Exec="%s"
+Exec=%s
 Icon=%s
 Terminal=false
 Categories=Office;
+Actions=quick;
 X-AppImage-Path=%s
-`, q, icon, img)
+
+[Desktop Action quick]
+Name=Add or search
+Name[el]=Προσθήκη ή αναζήτηση
+Name[de]=Hinzufügen oder suchen
+Exec=%s quick
+`, q, icon, img, q)
 	if old, err := os.ReadFile(desktop); err == nil && string(old) == entry {
 		return nil
 	}
@@ -71,7 +76,14 @@ X-AppImage-Path=%s
 	return os.WriteFile(desktop, []byte(entry), 0o644)
 }
 
+// desktopQuote quotes a path for a Desktop Entry's Exec line: double
+// quotes with \, ", ` and $ escaped, then escaped again as a string value.
+func desktopQuote(path string) string {
+	return `"` + strings.NewReplacer(`\`, `\\\\`, `"`, `\\"`, "`", "\\\\`", `$`, `\\$`).Replace(path) + `"`
+}
+
 func removeAppImageMenu() {
+	_ = setAutostart(false, "") // the tray at login goes with the menu entry
 	desktop, icon := appImageMenuFiles()
 	_ = os.Remove(desktop)
 	_ = os.Remove(icon)

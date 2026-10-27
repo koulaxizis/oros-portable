@@ -10,6 +10,8 @@
 //	oros-portable update    replace app/ with the latest orOS from GitHub
 //	oros-portable serve     only run the server (debugging)
 //	oros-portable remove-menu  remove the menu entry an AppImage added
+//	oros-portable tray      installed copies: the tray icon (tray.go)
+//	oros-portable quick     the small "Add or search" window (tray.go)
 package main
 
 import (
@@ -61,10 +63,14 @@ func main() {
 		if lay.installed {
 			integrateAppImage(lay)
 		}
-		if beforeStart(lay) {
+		if beforeStart(lay, false) {
 			return // the setup of a new version takes over
 		}
 		run(lay)
+	case "tray":
+		runTray(lay)
+	case "quick":
+		runQuick(lay)
 	case "serve":
 		serveOnly(lay)
 	case "update":
@@ -119,20 +125,26 @@ func run(lay layout) {
 		fail("This stick's format (exFAT or FAT32) cannot hold the browser's data on Linux. Format the stick as NTFS and copy orOS Portable to it again; on Windows it works as it is.")
 	}
 
+	runWindow(lay, appDir, appURL)
+}
+
+// runWindow serves orOS, opens one browser window at url and keeps the
+// server up until the browser is done with the profile. When another
+// launcher (a window, the tray) serves already, it only opens the window.
+func runWindow(lay layout, appDir, url string, extra ...string) {
 	srv, err := startServer(appDir)
 	if err != nil {
 		if !alreadyRunning() {
 			fail(fmt.Sprintf("Port %d is used by another program, so orOS cannot start. Close that program and try again.", port))
 		}
-		// Another launcher from this stick is serving already: just open a window.
 		log.Printf("server already running, opening a window only")
-		_ = launchBrowser(lay)
+		_ = launchBrowser(lay, url, extra...)
 		return
 	}
 	defer shutdown(srv)
 
 	checkUpdatesLater(lay)
-	if err := launchBrowser(lay); err != nil {
+	if err := launchBrowser(lay, url, extra...); err != nil {
 		fail(err.Error())
 	}
 	log.Printf("browser closed; data is saved")
@@ -161,7 +173,10 @@ func shutdown(s servers) {
 // startServer listens on IPv4 and, when available, IPv6 loopback, because
 // "localhost" may resolve to either. Nothing is reachable from the network.
 func startServer(appDir string) (servers, error) {
-	handler := newHandler(appDir)
+	return startServerWith(newHandler(appDir), appDir)
+}
+
+func startServerWith(handler http.Handler, appDir string) (servers, error) {
 	ln4, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
 		return nil, err
@@ -213,7 +228,12 @@ var mimeTypes = map[string]string{
 }
 
 func newHandler(appDir string) http.Handler {
-	files := http.FileServer(http.Dir(appDir))
+	return newDirHandler(func() string { return appDir })
+}
+
+// newDirHandler serves the folder that dir names at each request, so the
+// tray, which runs for days, can switch to a downloaded orOS.
+func newDirHandler(dir func() string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Reject other Host names so a web page cannot reach this server
 		// through DNS rebinding.
@@ -235,7 +255,7 @@ func newHandler(appDir string) http.Handler {
 		}
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-		files.ServeHTTP(w, r)
+		http.FileServer(http.Dir(dir())).ServeHTTP(w, r)
 	})
 }
 
@@ -249,10 +269,10 @@ func allowedHost(h string) bool {
 
 // browserArgs keeps the browser quiet: no first-run pages, no sync, no
 // background calls home, and the passwords stay in the profile on the stick.
-func browserArgs(profile string) []string {
+func browserArgs(profile, url string, extra ...string) []string {
 	args := []string{
 		"--user-data-dir=" + profile,
-		"--app=" + appURL,
+		"--app=" + url,
 		"--no-first-run",
 		"--no-default-browser-check",
 		"--disable-sync",
@@ -262,6 +282,7 @@ func browserArgs(profile string) []string {
 	if runtime.GOOS == "linux" {
 		args = append(args, "--password-store=basic")
 	}
+	args = append(args, extra...)
 	return append(args, extraArgs()...)
 }
 
@@ -339,14 +360,14 @@ func existing(paths ...string) []string {
 // launchBrowser runs the first browser that starts and waits until its
 // window closes. A browser that dies within a few seconds with an error
 // (for example a sandbox that the host system blocks) is skipped.
-func launchBrowser(lay layout) error {
+func launchBrowser(lay layout, url string, extra ...string) error {
 	list := browserCandidates(lay)
 	if len(list) == 0 {
 		return errors.New("No browser was found. Put the browser folder next to the launcher, or install Chromium, Edge, Brave or Chrome.")
 	}
 	for _, c := range list {
 		log.Printf("starting %s (profile %s)", c.path, c.profile)
-		cmd := exec.Command(c.path, browserArgs(c.profile)...)
+		cmd := exec.Command(c.path, browserArgs(c.profile, url, extra...)...)
 		start := time.Now()
 		err := cmd.Run()
 		if err != nil && time.Since(start) < 5*time.Second {
