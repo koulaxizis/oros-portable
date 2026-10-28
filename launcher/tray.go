@@ -33,11 +33,9 @@ import (
 // extension) the icon is not shown; "quick" and the menu still work.
 
 // quickURL: the shell opens the bar filling the window, and Escape with
-// nothing run closes the window.
-const quickURL = appURL + "#quick-win"
-
-// quickArgs: the size of the small window (px at 100% scale).
-var quickArgs = []string{"--window-size=640,460"}
+// nothing run closes the window. quickPath (window.go) gives the window
+// a placement of its own; the server sends it on to "/".
+const quickURL = "http://localhost:47800" + quickPath + "#quick-win"
 
 //go:embed icons/oros.png
 var iconPNG []byte
@@ -162,7 +160,7 @@ func (t *trayApp) keepServer() {
 	}
 }
 
-func (t *trayApp) openQuick() { t.open(quickURL, quickArgs...) }
+func (t *trayApp) openQuick() { t.open(quickURL, quickArgs()...) }
 
 // open starts a browser window without waiting for it. Clicks while one
 // is starting are dropped (a slow first start must not open three).
@@ -272,7 +270,7 @@ func startBrowser(lay layout, url string, extra ...string) error {
 	}
 	for _, c := range list {
 		log.Printf("starting %s (profile %s)", c.path, c.profile)
-		cmd := exec.Command(c.path, browserArgs(c.profile, url, extra...)...)
+		cmd := exec.Command(c.path, windowArgs(c.profile, url, extra)...)
 		if err := cmd.Start(); err != nil {
 			log.Printf("browser: %v, trying the next one", err)
 			continue
@@ -297,7 +295,7 @@ func startBrowser(lay layout, url string, extra ...string) error {
 // only starts the browser; otherwise it serves until the window closes.
 func runQuick(lay layout) {
 	if alreadyRunning() {
-		if err := startBrowser(lay, quickURL, quickArgs...); err != nil {
+		if err := startBrowser(lay, quickURL, quickArgs()...); err != nil {
 			fail(err.Error())
 		}
 		return
@@ -309,7 +307,7 @@ func runQuick(lay layout) {
 	if _, err := os.Stat(filepath.Join(appDir, "index.html")); err != nil {
 		fail("The app folder is missing next to the launcher: " + appDir)
 	}
-	runWindow(lay, appDir, quickURL, quickArgs...)
+	runWindow(lay, appDir, quickURL, quickArgs()...)
 }
 
 // trayCommand is the program that "Start with the computer" runs: the
