@@ -31,13 +31,17 @@ The same launcher and browser also install on a computer (`scripts/build-install
 
 | | File | Installs to |
 |---|---|---|
-| Windows 10/11 | `orOS-Setup-<version>.exe` (Inno Setup, `packaging/windows/orOS.iss`), per user, no admin rights, Start menu entry, uninstaller | `%LOCALAPPDATA%\Programs\orOS` |
+| Windows 10/11 | `orOS-Setup-<version>.exe` (Inno Setup, `packaging/windows/orOS.iss`), per user, no admin rights, Start menu entry, uninstaller; offers [orOS Drive](https://github.com/koulaxizis/oros-drive) too (see below) | `%LOCALAPPDATA%\Programs\orOS` |
 | Linux | `orOS-<version>-x86_64.AppImage` (+ `.zsync` for AppImageUpdate), adds its own menu entry on start (`remove-menu` takes it away) | runs from the file |
 | Debian/Ubuntu | `oros_<version>_amd64.deb`, `/usr/bin/oros`, desktop entry, AppArmor rule that lets the bundled Chromium use its sandbox on Ubuntu 23.10+ | `/opt/oros` |
 
 An `installed` file next to the launcher switches it to installed mode: the browser profile, the log and app updates go to the user's data folder (`%LOCALAPPDATA%\orOS` or `~/.local/share/oros`, `OROS_DATA_DIR` overrides it), and the launcher serves whichever is newer by `APP_VERSION`, the app the installer brought or the one `update` fetched. The address stays `http://localhost:47800/`, but the profile is separate from a stick's, so data moves between them through Dropbox sync. `scripts/test-installers.sh` and `scripts/test-windows-setup.ps1` install, run and remove each package in CI.
 
 Installed copies update themselves (`launcher/autoupdate.go`; portable copies keep the manual `update`). At most every 6 hours, while orOS is open, the launcher checks GitHub in the background: a new commit on orOS `main` is downloaded into `app.next` and swapped in at the next start, never under an open window. A new release of this repo is downloaded too and checked against its `.sha256` asset: the Windows setup then runs silently at the next start (`/RELAUNCH=1` opens orOS again), the AppImage replaces its own file, the .deb is offered at the next start and installed with `pkexec apt-get install` (the desktop's own password prompt), and a Scoop install leaves new releases to `scoop update`. The Windows setup asks whether to update automatically and writes a `no-auto-update` file in the data folder when you say no; that file, or `OROS_NO_AUTO_UPDATE`, turns it off. Test builds (`0.0.0-<sha>`) never update.
+
+### orOS Drive in the Windows setup
+
+The Windows setup carries the latest [orOS Drive](https://github.com/koulaxizis/oros-drive) setup (CI downloads it from that repo's latest release and checks it against its `SHA256SUMS.txt`) and offers "Also install orOS Drive" (unticked) while Drive is not installed. Ticked, it runs Drive's own setup silently for the current user and opens Drive's settings page for the sign-in. Drive stays its own program: its own folder, Start menu entry, tray icon (the orOS mark in reverse colours, gold tile), updates and uninstaller; removing orOS keeps Drive. Once Drive is installed the option is not shown again, so an automatic update of orOS never puts an older Drive back. Linux keeps the separate Drive packages.
 
 ### Tray: add or search (installed copies)
 

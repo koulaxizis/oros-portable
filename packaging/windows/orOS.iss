@@ -1,6 +1,10 @@
 ﻿; orOS setup for Windows (Inno Setup 6).
 ; Built in CI from out/installers/windows/ (see scripts/build-installers.sh):
-;   iscc /DAppVer=0.2.0 /DNumVer=0.2.0 orOS.iss
+;   iscc /DAppVer=0.2.0 /DNumVer=0.2.0 [/DDriveVer=0.6.0] orOS.iss
+; With DriveVer, drive\orOS-Drive-Setup.exe (the latest orOS Drive release,
+; checked against its SHA256SUMS.txt in CI) goes inside, and the setup
+; offers to install orOS Drive too (Chris 2026-10-28, "one installer").
+; Drive stays its own program: its own folder, uninstaller and updates.
 ; Installs for the current user only, so it needs no administrator rights,
 ; and puts the "installed" marker next to the launcher, which keeps the
 ; browser data and app updates in %LOCALAPPDATA%\orOS.
@@ -55,6 +59,17 @@ el.AutoUpdate=Αυτόματη ενημέρωση του orOS (έλεγχος σ
 en.AutoStart=Start orOS in the tray with Windows (click it to add a task or search)
 el.AutoStart=Εκκίνηση του orOS στο tray μαζί με τα Windows (κλικ για προσθήκη εργασίας ή αναζήτηση)
 
+#ifdef DriveVer
+en.Drive=Also install orOS Drive (keeps folders of this computer in sync with orOS Files)
+el.Drive=Εγκατάσταση και του orOS Drive (συγχρονίζει φακέλους του υπολογιστή με τα Αρχεία του orOS)
+
+en.DriveGroup=orOS Drive {#DriveVer}:
+el.DriveGroup=orOS Drive {#DriveVer}:
+
+en.DriveInstalling=Installing orOS Drive...
+el.DriveInstalling=Εγκατάσταση του orOS Drive...
+#endif
+
 en.QuickName=orOS Add or search
 el.QuickName=orOS Προσθήκη ή αναζήτηση
 
@@ -63,6 +78,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "autoupdate"; Description: "{cm:AutoUpdate}"
 ; Off by default (Quick window plan, 2026-10-27); the tray menu turns it on or off too.
 Name: "autostart"; Description: "{cm:AutoStart}"; Flags: unchecked
+#ifdef DriveVer
+; Offered only while orOS Drive is not installed: a silent update of orOS
+; never runs the bundled Drive setup over a newer Drive.
+Name: "drive"; Description: "{cm:Drive}"; GroupDescription: "{cm:DriveGroup}"; Flags: unchecked; Check: not DriveInstalled
+#endif
 
 [Registry]
 ; The same value as the tray's "Start with the computer" (launcher autostart_windows.go).
@@ -75,6 +95,9 @@ Type: filesandordirs; Name: "{app}\app"
 
 [Files]
 Source: "files\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+#ifdef DriveVer
+Source: "drive\orOS-Drive-Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Tasks: drive
+#endif
 
 [Icons]
 Name: "{userprograms}\orOS"; Filename: "{app}\orOS.exe"; WorkingDir: "{app}"
@@ -83,6 +106,12 @@ Name: "{userprograms}\{cm:QuickName}"; Filename: "{app}\orOS.exe"; Parameters: "
 Name: "{userdesktop}\orOS"; Filename: "{app}\orOS.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
+#ifdef DriveVer
+; orOS Drive's own setup, silent, per user (its defaults: start with Windows).
+Filename: "{tmp}\orOS-Drive-Setup.exe"; Parameters: "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CURRENTUSER"; StatusMsg: "{cm:DriveInstalling}"; Flags: waituntilterminated; Tasks: drive
+; Its settings page asks for the Dropbox or WebDAV sign-in.
+Filename: "{localappdata}\Programs\orOS Drive\orOS Drive.exe"; Flags: nowait skipifsilent skipifdoesntexist; Tasks: drive
+#endif
 Filename: "{app}\orOS.exe"; Description: "{cm:LaunchProgram,orOS}"; Flags: nowait postinstall skipifsilent
 ; An automatic update runs this setup silently with /RELAUNCH=1: open orOS again.
 Filename: "{app}\orOS.exe"; Flags: nowait; Check: Relaunch
@@ -112,6 +141,13 @@ begin
       SaveStringToFile(Off, 'Turned off in the orOS setup.' + #13#10, False);
     end;
   end;
+end;
+
+// orOS Drive's own setup registers this uninstall key (its AppId).
+function DriveInstalled(): Boolean;
+begin
+  Result := RegKeyExists(HKEY_CURRENT_USER, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{9E3C5B71-4D2A-4F0E-8B6C-2A7D1E5F9C40}_is1') or
+    FileExists(ExpandConstant('{localappdata}\Programs\orOS Drive\orOS Drive.exe'));
 end;
 
 function Relaunch(): Boolean;

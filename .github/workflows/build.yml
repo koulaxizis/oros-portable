@@ -102,6 +102,20 @@ jobs:
         with:
           name: windows-setup-files
           path: setup
+      - name: Fetch orOS Drive (offered in the setup)
+        # The latest orOS Drive release, checked against its SHA256SUMS.txt.
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p setup/drive && cd setup/drive
+          gh release download --repo koulaxizis/oros-drive --pattern 'orOS-Drive-Setup-*.exe' --pattern SHA256SUMS.txt
+          exe=$(ls orOS-Drive-Setup-*.exe)
+          grep " \./$exe\$\| $exe\$" SHA256SUMS.txt | sed "s# \./# #" | sha256sum -c -
+          ver=${exe#orOS-Drive-Setup-}; ver=${ver%.exe}
+          mv "$exe" orOS-Drive-Setup.exe
+          echo "$ver" > VERSION
       - name: Build orOS-Setup.exe
         shell: pwsh
         run: |
@@ -111,7 +125,8 @@ jobs:
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           $ver = (Get-Content setup/VERSION).Trim()
           $num = ($ver -split '-')[0]
-          & $iscc /Qp "/DAppVer=$ver" "/DNumVer=$num" setup/orOS.iss
+          $drive = (Get-Content setup/drive/VERSION).Trim()
+          & $iscc /Qp "/DAppVer=$ver" "/DNumVer=$num" "/DDriveVer=$drive" setup/orOS.iss
           if ($LASTEXITCODE) { exit 1 }
           # The launcher checks its automatic download against this file.
           Get-ChildItem setup/orOS-Setup-*.exe | ForEach-Object {
