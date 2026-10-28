@@ -246,6 +246,12 @@ func newDirHandler(dir func() string) http.Handler {
 			_, _ = io.WriteString(w, markerBody)
 			return
 		}
+		if r.URL.Path == quickPath {
+			// The small window's own address (window.go); the browser keeps
+			// the "#quick-win" fragment across the redirect.
+			http.Redirect(w, r, "/", http.StatusFound)
+			return
+		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
@@ -367,7 +373,7 @@ func launchBrowser(lay layout, url string, extra ...string) error {
 	}
 	for _, c := range list {
 		log.Printf("starting %s (profile %s)", c.path, c.profile)
-		cmd := exec.Command(c.path, browserArgs(c.profile, url, extra...)...)
+		cmd := exec.Command(c.path, windowArgs(c.profile, url, extra)...)
 		start := time.Now()
 		err := cmd.Run()
 		if err != nil && time.Since(start) < 5*time.Second {

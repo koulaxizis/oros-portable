@@ -23,17 +23,30 @@ func TestTrayIconsMatchPackaging(t *testing.T) {
 }
 
 func TestQuickWindowURLAndSize(t *testing.T) {
-	if quickURL != "http://localhost:47800/#quick-win" {
+	if quickURL != "http://localhost:47800/__oros-quick#quick-win" {
 		t.Fatal(quickURL)
 	}
-	args := strings.Join(browserArgs("/p", quickURL, quickArgs...), " ")
-	for _, want := range []string{"--app=http://localhost:47800/#quick-win", "--window-size=640,460", "--user-data-dir=/p"} {
+	args := strings.Join(browserArgs("/p", quickURL, quickArgs()...), " ")
+	for _, want := range []string{"--app=http://localhost:47800/__oros-quick#quick-win", "--window-size=640,460", "--user-data-dir=/p"} {
 		if !strings.Contains(args, want) {
 			t.Fatalf("missing %s in %s", want, args)
 		}
 	}
-	if a := strings.Join(browserArgs("/p", appURL), " "); strings.Contains(a, "window-size") {
-		t.Fatal("a normal window has no fixed size")
+	if a := strings.Join(browserArgs("/p", appURL), " "); strings.Contains(a, "window-size") || strings.Contains(a, "maximized") {
+		t.Fatal("a normal window has no fixed size, and no flag maximises every window")
+	}
+}
+
+// The small window's own address goes on to the orOS page; other hosts
+// stay refused there too.
+func TestQuickPathRedirects(t *testing.T) {
+	h := newHandler(testApp(t))
+	w := get(h, "localhost:47800", quickPath)
+	if w.Code != 302 || w.Header().Get("Location") != "/" {
+		t.Fatal(w.Code, w.Header())
+	}
+	if w := get(h, "evil.example:47800", quickPath); w.Code != 403 {
+		t.Fatal("foreign host must stay refused")
 	}
 }
 
