@@ -21,7 +21,7 @@ The stick holds a small launcher (`orOS.exe` / `orOS`), the orOS web app (`app/`
 2. opens the browser in app mode with its profile in `data/profile/` on the stick;
 3. stops the server when the window closes.
 
-The address never changes, because the browser ties stored data to it. orOS's service worker caches the whole app, so it works offline like the installed PWA. Encrypted Dropbox sync works as on useoros.online when online.
+The address never changes, because the browser ties stored data to it. When port 47800 is taken at start (`launcher/portbusy.go`), the launcher waits up to 10 seconds for an orOS that is closing, joins an orOS that answers (window or tray), offers to close an earlier orOS launcher that holds the port but no longer answers, and otherwise names the program that holds it (Windows: `GetExtendedTcpTable`; Linux: `/proc`), orOS Drive waiting for a Dropbox sign-in, or a port range Windows reserved for itself (Hyper-V, WSL, Docker; `net stop winnat` / `net start winnat` frees it). orOS's service worker caches the whole app, so it works offline like the installed PWA. Encrypted Dropbox sync works as on useoros.online when online.
 
 The lite edition has no bundled browser and uses an installed Chromium, Brave, Edge or Chrome, with a separate `data/profile-system/` profile (a profile from a newer Chromium may not open in an older one). If the bundled browser fails to start (for example a Linux system that blocks its sandbox), the launcher falls back to an installed one.
 
