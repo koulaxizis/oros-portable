@@ -132,11 +132,11 @@ func run(lay layout) {
 // server up until the browser is done with the profile. When another
 // launcher (a window, the tray) serves already, it only opens the window.
 func runWindow(lay layout, appDir, url string, extra ...string) {
-	srv, err := startServer(appDir)
+	srv, err := claimPort(appDir)
 	if err != nil {
-		if !alreadyRunning() {
-			fail(fmt.Sprintf("Port %d is used by another program, so orOS cannot start. Close that program and try again.", port))
-		}
+		return // claimPort told the user
+	}
+	if srv == nil {
 		log.Printf("server already running, opening a window only")
 		_ = launchBrowser(lay, url, extra...)
 		return
