@@ -42,6 +42,7 @@ func webArgs(lay layout) []string {
 	if _, err := os.Stat(filepath.Join(lay.root, ubolDir, "manifest.json")); err == nil {
 		args = append(args, "--load-extension="+filepath.Join(lay.root, ubolDir))
 	}
+	args = append(args, extraArgs()...) // OROS_PORTABLE_BROWSER_ARGS, as for orOS's window
 	return append(args, webHome)
 }
 
