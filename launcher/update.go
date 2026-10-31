@@ -56,7 +56,7 @@ func fetchApp(root, dest string) error {
 	if r.StatusCode != 200 {
 		return fmt.Errorf("download returned %s", r.Status)
 	}
-	if _, err := io.Copy(tmp, r.Body); err != nil {
+	if _, err := io.Copy(tmp, progressReader(r.Body)); err != nil {
 		return err
 	}
 

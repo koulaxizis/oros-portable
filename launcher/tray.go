@@ -270,7 +270,8 @@ func startBrowser(lay layout, url string, extra ...string) error {
 	}
 	for _, c := range list {
 		log.Printf("starting %s (profile %s)", c.path, c.profile)
-		cmd := exec.Command(c.path, windowArgs(c.profile, url, extra)...)
+		args := append(append([]string{}, extra...), sysBrowserArgs(lay, c, url)...)
+		cmd := exec.Command(c.path, windowArgs(c.profile, url, args)...)
 		if err := cmd.Start(); err != nil {
 			log.Printf("browser: %v, trying the next one", err)
 			continue

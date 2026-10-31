@@ -54,12 +54,14 @@ func autoUpdatesOn(lay layout) bool {
 // the tray is starting, so a new version starts the tray again, not a window.
 func beforeStart(lay layout, tray bool) bool {
 	// Another orOS window is open and serving: change nothing under it.
-	if !autoUpdatesOn(lay) || alreadyRunning() {
+	if alreadyRunning() {
 		return false
 	}
-	if runPendingSetup(lay, tray) || (isDebInstall(lay) && runPendingDeb(lay, tray)) {
+	if autoUpdatesOn(lay) && (runPendingSetup(lay, tray) || (isDebInstall(lay) && runPendingDeb(lay, tray))) {
 		return true
 	}
+	// An installed copy stages orOS by itself; a portable one when "Update
+	// orOS" in the System panel asked for it (sysupdate.go).
 	applyStagedApp(lay)
 	return false
 }

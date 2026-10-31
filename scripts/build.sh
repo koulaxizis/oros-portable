@@ -55,6 +55,17 @@ mv "$LIN_DIR" "$FULL/browser/linux"
 ls "$FULL/browser/windows/chrome.exe" "$FULL/browser/linux/chrome" >/dev/null
 rm -rf "$TMP"
 
+echo "== System extension"
+# The orOS USB System extension (sound, brightness, power, window, updates
+# in Quick settings); the launcher is its native host (launcher/syshost.go).
+# Only the bundled browser loads it, so the lite edition has none.
+TMP="$(mktemp -d)"
+gh api repos/koulaxizis/oros-usb/tarball/main > "$TMP/usb.tar.gz"
+tar -xzf "$TMP/usb.tar.gz" -C "$TMP"
+cp -r "$(find "$TMP" -maxdepth 3 -type d -path '*/system/extension' | head -1)" "$FULL/system"
+ls "$FULL/system/manifest.json" "$FULL/system/content.js" >/dev/null
+rm -rf "$TMP"
+
 echo "== licences and sources"
 # Both editions carry the licences and a manifest of the exact sources, so a
 # copy sold on a stick meets the GPL/LGPL source terms (see WRITTEN-OFFER.txt).
