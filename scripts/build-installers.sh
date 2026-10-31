@@ -28,6 +28,7 @@ stage() { # stage <dest> <os: linux|windows>
   cp -r "$FULL/app" "$FULL/LICENSES" "$FULL/SOURCES.txt" "$FULL/WRITTEN-OFFER.txt" "$dest/"
   cp -r "$FULL/browser/$os" "$dest/browser/$os"
   if [ -d "$FULL/system" ]; then cp -r "$FULL/system" "$dest/"; fi
+  if [ -d "$FULL/ubol" ]; then cp -r "$FULL/ubol" "$dest/"; fi
   rm -f "$dest/browser/$os/chromedriver" "$dest/browser/$os/chromedriver.exe"
   if [ "$os" = linux ]; then cp "$FULL/orOS" "$dest/"; else cp "$FULL/orOS.exe" "$dest/"; fi
   printf 'orOS %s, installed by its setup. Delete this file to run portable.\n' "$VERSION" > "$dest/installed"

@@ -163,6 +163,9 @@ type sysRequest struct {
 	On    bool   `json:"on,omitempty"`
 	Value int    `json:"value,omitempty"`
 	Mode  string `json:"mode,omitempty"`
+	// Wi-Fi (sysnet.go). The password is used once and never logged.
+	SSID     string `json:"ssid,omitempty"`
+	Password string `json:"password,omitempty"`
 }
 
 type sysReply map[string]any
@@ -245,6 +248,9 @@ func handleSys(lay layout, req sysRequest) sysReply {
 		log.Printf("system: %s", req.Cmd)
 	}
 	p := sysPlatform
+	if r, done := handleNet(req); done {
+		return r
+	}
 	switch req.Cmd {
 	case "ping":
 		touch(filepath.Join(lay.data, pingFile))
@@ -292,8 +298,8 @@ func handleSys(lay layout, req sysRequest) sysReply {
 		return updateStart(lay)
 	case "update.status":
 		return updateStatus(lay)
-	case "bt.list", "wifi.scan", "printers.list", "disks.list", "time.get", "install.disks":
-		return sysFail(errUnsupported)
+	case "web.open":
+		return openWeb(lay)
 	}
 	return sysFail(errUnsupported)
 }
@@ -310,7 +316,8 @@ func sysStatus(lay layout, p platformOps) sysReply {
 			// Parts the extension shows; the rest stays hidden.
 			"sound": true, "screen": true, "power": true, "sleep": true,
 			"exit": true, "window": true, "report": true,
-			"update": !lay.installed, // installed copies update themselves
+			"update": !lay.installed,        // installed copies update themselves
+			"web":    webBrowser(lay) != "", // the Internet window (sysweb.go)
 		},
 	}
 	if v, m, ok := p.volume(); ok {
@@ -323,6 +330,7 @@ func sysStatus(lay layout, p platformOps) sysReply {
 	if pc, ch, ok := p.battery(); ok {
 		r["battery"] = map[string]any{"percent": pc, "charging": ch}
 	}
+	netStatus(r, r["caps"].(map[string]bool))
 	return r
 }
 

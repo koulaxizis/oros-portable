@@ -1,4 +1,4 @@
-//go:build !linux
+//go:build !linux && !windows
 
 package main
 
@@ -12,3 +12,5 @@ var fsAPI *computerFS
 func (c *computerFS) setCookie(http.ResponseWriter) {}
 
 func (c *computerFS) ServeHTTP(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) }
+
+func diskHelper(string, []string) int { return 1 }

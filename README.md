@@ -31,11 +31,15 @@ The full edition and the installers carry orOS USB's System extension (`system/`
 
 The extension then shows in orOS's Quick settings what this computer has (the `caps` in `status`): sound and mute (PipeWire/PulseAudio; Windows Core Audio), screen brightness (logind backlight; WMI on laptops), battery, sleep, restart and shut down of the computer (each confirmed), leaving orOS, full screen or a window, a report zip in Downloads, and, on a stick, "Update orOS" (downloaded by a detached `orOS update-stage` into `app.next`, swapped in at the next start). The stick opens orOS in full screen and the installed apps in a window; the choice is kept in `data/session.json`. Short runs (the host, the update download) log to `system.log` so the window's `launcher.log` stays whole.
 
+Internet window (`launcher/sysweb.go`): the **Internet** button next to the System button opens a normal window of the bundled browser (tabs, address bar, DuckDuckGo as the start page) with its own profile in `data/web`, so sites never share storage with orOS, and uBlock Origin Lite (`ubol/`, fetched with oros-usb's `scripts/ubol.sh`). The lite edition has no button: an installed browser is already at hand.
+
+Wi-Fi and Bluetooth (`launcher/sysnet.go`): Wi-Fi is controlled inside orOS as on the stick (networks, password, radio on or off), through NetworkManager's `nmcli` on Linux and the Native Wi-Fi API (`wlanapi.dll`, `net_windows.go`) on Windows. A network Windows knows connects with its saved profile; a new one gets a WPA2/WPA3 personal or open profile; enterprise networks stay with Windows' settings. Passwords are never logged. Bluetooth opens the computer's own settings (`ms-settings:bluetooth`; GNOME, KDE, Cinnamon, Blueman, Blueberry or Xfce on Linux).
+
 White-screen watchdog (`launcher/watchdog.go`): once orOS has painted, the extension pings every 10 s. Where it has pinged before, a main window with no ping within 90 s is ended and started once more with `--disable-gpu`.
 
-### Computer files (orOS USB only)
+### Computer files ("This computer")
 
-On [orOS USB](https://github.com/koulaxizis/oros-usb) (the live stick and orOS installed on a disk) the launcher also gives the orOS Files app the computer's own files: the home folder and the disks opened under `/media/oros` (`launcher/computerfs.go`, API under `/__oros/fs/`). It is off unless `OROS_COMPUTER_FILES=1` on Linux, which only orOS USB's session sets; the portable and installed editions are unchanged.
+On [orOS USB](https://github.com/koulaxizis/oros-usb) (the live stick and orOS installed on a disk) the launcher also gives the orOS Files app the computer's own files: the home folder and the disks opened under `/media/oros` (`launcher/computerfs.go`, API under `/__oros/fs/`). On orOS USB (`OROS_COMPUTER_FILES=1`, set by its session) it is always on. orOS Portable and the desktop apps offer the same on Linux once the user agrees for this computer (`launcher/fsconsent.go`: a stick asks once per computer, the desktop apps are on by default, both can switch it off; the answer is kept in `data/computer-files.json` under a hash of the computer's machine ID). There the disks are the ones udisks opens under `/run/media/<user>` or `/media/<user>`, with the launcher as its own disk helper (`orOS disks`, `orOS mount --dev /dev/sdX1 [--unmount]`, `launcher/hostdisks_linux.go`): partitions of 1 GiB or more with a readable filesystem that the running system does not use; the computer's own NTFS (Windows) disks open read-only. On Windows (`launcher/computerfs_windows.go`) the disks are the fixed and removable drives as `/disks/C`, `/disks/D` and so on (named "Label (C:)"), all open already; the system drive is whole and writable, but Windows' own folders at its top (Windows, Program Files, ProgramData, Recovery and the like) and every file or folder marked hidden or system stay out of sight, and names Windows cannot hold (`<>:"|?*`, a trailing dot or space, CON, NUL, COM1 and the like) are refused. Removing moves to the Windows Recycle Bin (a removable drive has none: 409 `norecycle`); orOS lists no Recycle Bin items itself, `POST op {"op": "recyclebin"}` opens it in Explorer. "Unmount" points to Windows' "Safely remove". The orOS Portable folder and the data folder are never reachable. `GET consent` says `on`, `off` or `ask`; `POST consent {"on": true|false}` keeps the answer; every other call answers 404 `off` until then. `OROS_NO_COMPUTER_FILES=1` turns all of it off.
 
 - **Only orOS may call it:** a random key in an `HttpOnly`, `SameSite=Strict` cookie (new at every start, sent with orOS's pages), `Sec-Fetch-Site: same-origin`, the same Origin, and the `X-Oros-FS: 1` header on everything but plain file reads. Other sites, other localhost ports and the Internet window (another profile) are refused.
 - **Only the user's files:** `/home/...` is the home folder without names starting with `.` and without `~/oros` (the launcher and browser profiles); `/disks/<name>/...` is a disk while it is mounted. No symbolic link leads out of its place or to a hidden name.
@@ -44,11 +48,11 @@ On [orOS USB](https://github.com/koulaxizis/oros-usb) (the live stick and orOS i
 
 | Call | |
 |---|---|
-| `GET roots` | home and mounted disks, with free and total space and read-only |
+| `GET roots` | home and mounted disks, with free and total space and read-only; `os` (`linux` or `windows`) |
 | `GET list?path=`, `GET stat?path=` | folder entries `{name, path, dir, size, mtime}` |
 | `GET raw?path=` | the file (Range requests for video and audio); `X-Oros-MTime` |
 | `PUT raw?path=[&replace=1][&ifmtime=ms]` | write the request body |
-| `POST op` `{op, path, to, root, id, dev}` | `mkdir`, `rename`, `copy`, `move`, `trash`, `restore`, `purge`, `mount`, `unmount` |
+| `POST op` `{op, path, to, root, id, dev}` | `mkdir`, `rename`, `copy`, `move`, `trash`, `restore`, `purge`, `mount`, `unmount`, `recyclebin` (Windows) |
 | `GET trash`, `GET disks` | the Trash items, the disks that can be opened |
 
 ## Installers

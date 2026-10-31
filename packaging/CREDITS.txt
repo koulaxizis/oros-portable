@@ -13,6 +13,12 @@ Christos Koulaxizis with the work of many others. Thank you to:
   licences (LGPL, MPL, Apache-2.0, MIT and more). Licence: Chromium-BSD.txt;
   the full list of components with their licences is chrome://credits in the
   bundled browser.
+- Raymond Hill and contributors: uBlock Origin Lite, the ad blocker in the
+  Internet window of the full edition and the installers (ubol/), GPL-3.0.
+  Its licence and source address are inside ubol/ (LICENSE.txt).
+  https://github.com/uBlockOrigin/uBOL-home
+- The orOS USB System extension (system/), MIT, part of orOS.
+  https://github.com/koulaxizis/oros-usb
 - The Go Authors: the Go language and standard library the launcher (orOS,
   orOS.exe) is built with, BSD-3-Clause. Licence: Go-BSD.txt
   https://go.dev/
