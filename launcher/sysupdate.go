@@ -154,9 +154,13 @@ func progressReader(r io.Reader) io.Reader {
 	return io.TeeReader(r, &countingWriter{fn: downloadProgress})
 }
 
+// maxWebReport bounds orOS's part of a report (it is a few KB).
+const maxWebReport = 512 << 10
+
 // writeSysReport saves the launcher's log and a few facts as a zip in the
-// Downloads folder, for a message to whoever helps.
-func writeSysReport(lay layout, dir string) (string, error) {
+// Downloads folder, for a message to whoever helps. web is orOS's own
+// report from Settings (oros.txt), or "" from the System panel.
+func writeSysReport(lay layout, dir, web string) (string, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
@@ -170,6 +174,14 @@ func writeSysReport(lay layout, dir string) (string, error) {
 		version, runtime.GOOS, runtime.GOARCH, appVersion(lay.appDir()), appCommit(lay.appDir()), lay.installed, loadSession(lay))
 	if w, err := z.Create("about.txt"); err == nil {
 		_, _ = io.WriteString(w, info)
+	}
+	if web != "" {
+		if len(web) > maxWebReport {
+			web = web[:maxWebReport] + "\n(cut)\n"
+		}
+		if w, err := z.Create("oros.txt"); err == nil {
+			_, _ = io.WriteString(w, web)
+		}
 	}
 	for _, n := range []string{"launcher.log", "system.log", sessionFile, updateProgressFile} {
 		b, err := os.ReadFile(filepath.Join(lay.data, n))

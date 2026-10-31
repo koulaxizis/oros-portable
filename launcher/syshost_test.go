@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -392,5 +393,39 @@ func TestInternetWindow(t *testing.T) {
 	handleSys(lay, sysRequest{Cmd: "web.open"})
 	if a := strings.Join(got, " "); !strings.Contains(a, "--load-extension="+ubol) {
 		t.Fatalf("uBlock Origin Lite not loaded: %s", a)
+	}
+}
+
+func TestReportZipWithOrosPart(t *testing.T) {
+	f := withFake(t)
+	lay := portableLayout(t)
+	must(t, os.MkdirAll(lay.data, 0o755))
+	must(t, os.WriteFile(filepath.Join(lay.data, "launcher.log"), []byte("started"), 0o644))
+	r := handleSys(lay, sysRequest{Cmd: "report", Web: "orOS problem report\nversion: 4.67.00\n"})
+	if r["ok"] != true {
+		t.Fatal(r)
+	}
+	z, err := zip.OpenReader(filepath.Join(f.dl, r["file"].(string)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer z.Close()
+	var names []string
+	var web string
+	for _, e := range z.File {
+		names = append(names, e.Name)
+		if e.Name == "oros.txt" {
+			rc, err := e.Open()
+			must(t, err)
+			b, _ := io.ReadAll(rc)
+			rc.Close()
+			web = string(b)
+		}
+	}
+	if got := strings.Join(names, ","); got != "about.txt,oros.txt,launcher.log" {
+		t.Fatalf("report holds %s", got)
+	}
+	if !strings.Contains(web, "version: 4.67.00") {
+		t.Fatalf("oros.txt: %q", web)
 	}
 }
