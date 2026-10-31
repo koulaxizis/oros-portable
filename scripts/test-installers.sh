@@ -35,6 +35,22 @@ test -x /opt/oros/browser/linux/chrome && test -f /opt/oros/installed
 for f in CREDITS.txt Go-BSD.txt Chromium-BSD.txt ungoogled-chromium-BSD.txt; do test -s "/opt/oros/LICENSES/$f"; done
 grep -q ungoogled-chromium /usr/share/doc/oros/copyright
 echo "ok: deb carries the licences"
+if [ -e "$ROOT/out/orOS-Portable/bridge" ]; then
+  # orOS Bridge (launcher/bridge.go): there, bundled, and it leaves updates to orOS
+  b=/opt/oros/bridge/linux/oros-bridge
+  test -x "$b" && test -f /opt/oros/bridge/linux/oros-bridge.bundled && test ! -e /opt/oros/bridge/windows
+  for f in orOS-Bridge-MIT.txt orOS-Bridge-THIRD_PARTY.md; do test -s "/opt/oros/LICENSES/$f"; done
+  "$b" --help | grep -q "orOS Bridge 0\."
+  if "$b" --update > /tmp/bridge-update.log 2>&1; then echo "the bundled bridge updated itself"; exit 1; fi
+  grep -q "orOS updates this copy" /tmp/bridge-update.log
+  bhome="$(mktemp -d)"
+  HOME="$bhome" "$b" --bundled --port 0 --code-file "$bhome/code" > "$bhome/bridge.log" 2>&1 &
+  bpid=$!
+  for _ in $(seq 20); do grep -q "is ready on 127.0.0.1:" "$bhome/bridge.log" && break; sleep 0.5; done
+  kill "$bpid"; wait "$bpid" 2>/dev/null || true
+  grep -q "is ready on 127.0.0.1:" "$bhome/bridge.log"
+  echo "ok: deb carries orOS Bridge, bundled (no updates of its own), and it starts"
+fi
 check_serves deb oros
 sudo apt-get remove -y -q oros
 test ! -e /opt/oros && test ! -e /usr/bin/oros

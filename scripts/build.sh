@@ -71,6 +71,43 @@ UBOL="$(sh "$(find "$TMP" -maxdepth 3 -type f -path '*/scripts/ubol.sh' | head -
 USB_COMMIT="$(gh api repos/koulaxizis/oros-usb/commits/main -q .sha 2>/dev/null || echo unknown)"
 rm -rf "$TMP"
 
+echo "== orOS Bridge"
+# Plugins and the sound card for orOS Studio (launcher/bridge.go starts it
+# with --bundled), from the latest orOS Bridge release, checked against its
+# SHA256SUMS.txt. 0.8.0 is the first with --bundled; a release build
+# (OROS_REQUIRE_BRIDGE=1) stops without it, a test build goes on without one.
+# oros-bridge.bundled beside each program: orOS updates it, not the bridge.
+BRIDGE_TAG="$(gh release view --repo koulaxizis/oros-bridge --json tagName -q .tagName)"
+if [ "$(printf '%s\n' 0.8.0 "${BRIDGE_TAG#v}" | sort -V | head -1)" != 0.8.0 ]; then
+  echo "orOS Bridge $BRIDGE_TAG is older than 0.8.0 (no --bundled)" >&2
+  if [ -n "${OROS_REQUIRE_BRIDGE:-}" ]; then exit 1; fi
+  echo "warning: this build has no orOS Bridge" >&2
+  BRIDGE_TAG=""
+else
+  TMP="$(mktemp -d)"
+  gh release download "$BRIDGE_TAG" --repo koulaxizis/oros-bridge --dir "$TMP" \
+    --pattern oros-bridge-windows-x64.zip --pattern oros-bridge-linux-x64.tar.gz --pattern SHA256SUMS.txt
+  # the Windows job writes CRLF lines, the Linux job LF
+  tr -d '\r' < "$TMP/SHA256SUMS.txt" | grep -E '  (oros-bridge-windows-x64\.zip|oros-bridge-linux-x64\.tar\.gz)$' > "$TMP/sums"
+  [ "$(wc -l < "$TMP/sums")" -eq 2 ]
+  (cd "$TMP" && sha256sum -c sums)
+  mkdir -p "$FULL/bridge/windows" "$TMP/linux"
+  unzip -q "$TMP/oros-bridge-windows-x64.zip" -d "$FULL/bridge/windows"
+  tar -xzf "$TMP/oros-bridge-linux-x64.tar.gz" -C "$TMP/linux"
+  mv "$TMP/linux/oros-bridge" "$FULL/bridge/linux"
+  chmod +x "$FULL/bridge/linux/oros-bridge"
+  ls "$FULL/bridge/windows/oros-bridge.exe" "$FULL/bridge/windows/oros-bridge-asio.dll" \
+    "$FULL/bridge/windows/LICENSE-asio.txt" "$FULL/bridge/linux/oros-bridge" >/dev/null
+  for d in windows linux; do
+    printf 'orOS Portable %s carries this orOS Bridge; a new orOS brings a new one.\n' "$VERSION" > "$FULL/bridge/$d/oros-bridge.bundled"
+  done
+  # The ASIO Compatible logo goes wherever ASIO is named (Steinberg's guidelines).
+  curl -fsSL --retry 3 -o "$TMP/asio-compatible.png" \
+    "https://raw.githubusercontent.com/koulaxizis/oros-bridge/$BRIDGE_TAG/asio/logo/asio-compatible-bw.png"
+  rm -rf "$TMP/linux"
+  BRIDGE_TMP="$TMP"
+fi
+
 echo "== licences and sources"
 # Both editions carry the licences and a manifest of the exact sources, so a
 # copy sold on a stick meets the GPL/LGPL source terms (see WRITTEN-OFFER.txt).
@@ -78,8 +115,18 @@ echo "== licences and sources"
 printf '%s\n' "" "Full edition and installers also carry:" \
   "  system/  orOS USB System extension (MIT), https://github.com/koulaxizis/oros-usb/tree/$USB_COMMIT/system/extension" \
   "  ubol/    ${UBOL%% ->*} (GPL-3.0), https://github.com/uBlockOrigin/uBOL-home/releases" >> "$OUT/SOURCES.txt"
-printf 'VERSION=%q\nOROS_COMMIT=%q\nWIN_TAG=%q\nLIN_TAG=%q\nCHROMIUM=%q\n' \
-  "$VERSION" "$OROS_COMMIT" "$WIN_TAG" "$LIN_TAG" "${LIN_TAG%%-*}" > "$OUT/sources.env"
+if [ -n "$BRIDGE_TAG" ]; then
+  printf '%s\n' "" "Full edition and installers also carry orOS Bridge (bridge/), $BRIDGE_TAG:" \
+    "  oros-bridge, oros-bridge.exe  MIT, https://github.com/koulaxizis/oros-bridge/tree/$BRIDGE_TAG" \
+    "  oros-bridge-asio.dll (Windows)  GPL-3.0, its source in asio/ of the same tree, built with the" \
+    "    Steinberg ASIO SDK 2.3.4 under the SDK's GPLv3 option:" \
+    "    https://download.steinberg.net/sdk_downloads/ASIO-SDK_2.3.4_2025-10-15.zip" \
+    "    and JSON for Modern C++ 3.11.3 (MIT): https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz" \
+    "    ASIO is a registered trademark of Steinberg Media Technologies GmbH (logo: LICENSES/asio-compatible.png)." \
+    "  Its other parts (VST 3 SDK, CLAP, miniaudio) are listed in LICENSES/orOS-Bridge-THIRD_PARTY.md." >> "$OUT/SOURCES.txt"
+fi
+printf 'VERSION=%q\nOROS_COMMIT=%q\nWIN_TAG=%q\nLIN_TAG=%q\nCHROMIUM=%q\nBRIDGE_TAG=%q\n' \
+  "$VERSION" "$OROS_COMMIT" "$WIN_TAG" "$LIN_TAG" "${LIN_TAG%%-*}" "$BRIDGE_TAG" > "$OUT/sources.env"
 for dir in "$LITE" "$FULL"; do
   mkdir -p "$dir/LICENSES"
   cp "$ROOT/LICENSE" "$dir/LICENSES/orOS-Portable-MIT.txt"
@@ -108,6 +155,13 @@ grep -q "Copyright" "$FULL/LICENSES/Chromium-BSD.txt"
 printf '%s\n' "The complete list of the open-source components inside the browser, with" \
   "their licences, is built into it: open chrome://credits in the bundled browser." \
   > "$FULL/LICENSES/Chromium-components.txt"
+if [ -n "$BRIDGE_TAG" ]; then
+  cp "$FULL/bridge/windows/LICENSE" "$FULL/LICENSES/orOS-Bridge-MIT.txt"
+  cp "$FULL/bridge/windows/LICENSE-asio.txt" "$FULL/LICENSES/orOS-Bridge-ASIO-module-GPL-3.0.txt"
+  cp "$FULL/bridge/windows/THIRD_PARTY.md" "$FULL/LICENSES/orOS-Bridge-THIRD_PARTY.md"
+  cp "$BRIDGE_TMP/asio-compatible.png" "$FULL/LICENSES/asio-compatible.png"
+  rm -rf "$BRIDGE_TMP"
+fi
 
 cat "$OUT/SOURCES.txt"
 ls "$FULL/LICENSES"

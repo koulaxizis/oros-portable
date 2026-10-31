@@ -29,6 +29,8 @@ stage() { # stage <dest> <os: linux|windows>
   cp -r "$FULL/browser/$os" "$dest/browser/$os"
   if [ -d "$FULL/system" ]; then cp -r "$FULL/system" "$dest/"; fi
   if [ -d "$FULL/ubol" ]; then cp -r "$FULL/ubol" "$dest/"; fi
+  # orOS Bridge for this system only (launcher/bridge.go)
+  if [ -d "$FULL/bridge/$os" ]; then mkdir -p "$dest/bridge" && cp -r "$FULL/bridge/$os" "$dest/bridge/$os"; fi
   rm -f "$dest/browser/$os/chromedriver" "$dest/browser/$os/chromedriver.exe"
   if [ "$os" = linux ]; then cp "$FULL/orOS" "$dest/"; else cp "$FULL/orOS.exe" "$dest/"; fi
   printf 'orOS %s, installed by its setup. Delete this file to run portable.\n' "$VERSION" > "$dest/installed"
@@ -75,7 +77,8 @@ cp "$ROOT/packaging/linux/apparmor-oros-chromium" "$DEB/usr/share/oros/"
   printf '%s\n' "orOS (this package): MIT, see below." \
     "/opt/oros/browser/linux is ungoogled-chromium, BSD-3-Clause, with open-source" \
     "components under their own licences (LGPL, MPL, Apache-2.0, MIT and more);" \
-    "the launcher is built with Go (BSD-3-Clause). Credits and every licence" \
+    "the launcher is built with Go (BSD-3-Clause); /opt/oros/bridge is orOS Bridge," \
+    "MIT. Credits and every licence" \
     "text: /opt/oros/LICENSES (CREDITS.txt first). Sources: /opt/oros/SOURCES.txt," \
     "written offer: /opt/oros/WRITTEN-OFFER.txt. The orOS web app's own credits:" \
     "/opt/oros/app/CREDITS.md." ""

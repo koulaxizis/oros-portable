@@ -183,6 +183,8 @@ func runWindow(lay layout, appDir, url string, extra ...string) {
 		return
 	}
 	defer shutdown(srv)
+	startBridge(lay) // plugins and the sound card for Studio (bridge.go)
+	defer stopBridge(lay)
 
 	checkUpdatesLater(lay)
 	if err := launchBrowser(lay, url, extra...); err != nil {

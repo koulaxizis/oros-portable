@@ -58,6 +58,9 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           case "$GITHUB_REF" in refs/tags/*) ;; *) VERSION="0.0.0-${GITHUB_SHA::7}";; esac
           if [ -n "$TAG" ]; then VERSION="${TAG#v}"; fi
+          # a release must carry orOS Bridge (0.8.0+); a test build may go without
+          case "$GITHUB_REF" in refs/tags/v*) export OROS_REQUIRE_BRIDGE=1;; esac
+          if [ -n "$TAG" ]; then export OROS_REQUIRE_BRIDGE=1; fi
           scripts/build.sh "$VERSION"
           scripts/build-sticktest.sh "$VERSION"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"

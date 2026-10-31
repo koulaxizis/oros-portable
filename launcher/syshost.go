@@ -254,7 +254,13 @@ func handleSys(lay layout, req sysRequest) sysReply {
 	switch req.Cmd {
 	case "ping":
 		touch(filepath.Join(lay.data, pingFile))
+		// orOS Bridge's open pairing code, shown over orOS (bridge.go)
+		if c := bridgeCode(lay); c != "" {
+			return ok(sysReply{"bridgeCode": c})
+		}
 		return ok(nil)
+	case "bridge.code":
+		return ok(sysReply{"code": bridgeCode(lay)})
 	case "status":
 		return ok(sysStatus(lay, p))
 	case "volume.set":
