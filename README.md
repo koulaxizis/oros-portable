@@ -31,6 +31,8 @@ The full edition and the installers carry orOS USB's System extension (`system/`
 
 The extension then shows in orOS's Quick settings what this computer has (the `caps` in `status`): sound and mute (PipeWire/PulseAudio; Windows Core Audio), screen brightness (logind backlight; WMI on laptops), battery, sleep, restart and shut down of the computer (each confirmed), leaving orOS, full screen or a window, a report zip in Downloads, and, on a stick, "Update orOS" (downloaded by a detached `orOS update-stage` into `app.next`, swapped in at the next start). The stick opens orOS in full screen and the installed apps in a window; the choice is kept in `data/session.json`. Short runs (the host, the update download) log to `system.log` so the window's `launcher.log` stays whole.
 
+Internet window (`launcher/sysweb.go`): the **Internet** button next to the System button opens a normal window of the bundled browser (tabs, address bar, DuckDuckGo as the start page) with its own profile in `data/web`, so sites never share storage with orOS, and uBlock Origin Lite (`ubol/`, fetched with oros-usb's `scripts/ubol.sh`). The lite edition has no button: an installed browser is already at hand.
+
 White-screen watchdog (`launcher/watchdog.go`): once orOS has painted, the extension pings every 10 s. Where it has pinged before, a main window with no ping within 90 s is ended and started once more with `--disable-gpu`.
 
 ### Computer files (orOS USB only)

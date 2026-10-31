@@ -292,6 +292,8 @@ func handleSys(lay layout, req sysRequest) sysReply {
 		return updateStart(lay)
 	case "update.status":
 		return updateStatus(lay)
+	case "web.open":
+		return openWeb(lay)
 	case "bt.list", "wifi.scan", "printers.list", "disks.list", "time.get", "install.disks":
 		return sysFail(errUnsupported)
 	}
@@ -310,7 +312,8 @@ func sysStatus(lay layout, p platformOps) sysReply {
 			// Parts the extension shows; the rest stays hidden.
 			"sound": true, "screen": true, "power": true, "sleep": true,
 			"exit": true, "window": true, "report": true,
-			"update": !lay.installed, // installed copies update themselves
+			"update": !lay.installed,        // installed copies update themselves
+			"web":    webBrowser(lay) != "", // the Internet window (sysweb.go)
 		},
 	}
 	if v, m, ok := p.volume(); ok {

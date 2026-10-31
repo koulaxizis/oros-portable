@@ -59,17 +59,25 @@ echo "== System extension"
 # The orOS USB System extension (sound, brightness, power, window, updates
 # in Quick settings); the launcher is its native host (launcher/syshost.go).
 # Only the bundled browser loads it, so the lite edition has none.
+# Needs jq for ubol.sh.
 TMP="$(mktemp -d)"
 gh api repos/koulaxizis/oros-usb/tarball/main > "$TMP/usb.tar.gz"
 tar -xzf "$TMP/usb.tar.gz" -C "$TMP"
 cp -r "$(find "$TMP" -maxdepth 3 -type d -path '*/system/extension' | head -1)" "$FULL/system"
 ls "$FULL/system/manifest.json" "$FULL/system/content.js" >/dev/null
+# uBlock Origin Lite for the Internet window (launcher/sysweb.go), with
+# orOS USB's own script: checked against the release's SHA-256.
+UBOL="$(sh "$(find "$TMP" -maxdepth 3 -type f -path '*/scripts/ubol.sh' | head -1)" "$FULL/ubol" | tail -1)"
+USB_COMMIT="$(gh api repos/koulaxizis/oros-usb/commits/main -q .sha 2>/dev/null || echo unknown)"
 rm -rf "$TMP"
 
 echo "== licences and sources"
 # Both editions carry the licences and a manifest of the exact sources, so a
 # copy sold on a stick meets the GPL/LGPL source terms (see WRITTEN-OFFER.txt).
 "$ROOT/scripts/sources-manifest.sh" "$VERSION" "$OROS_COMMIT" "$WIN_TAG" "$LIN_TAG" > "$OUT/SOURCES.txt"
+printf '%s\n' "" "Full edition and installers also carry:" \
+  "  system/  orOS USB System extension (MIT), https://github.com/koulaxizis/oros-usb/tree/$USB_COMMIT/system/extension" \
+  "  ubol/    ${UBOL%% ->*} (GPL-3.0), https://github.com/uBlockOrigin/uBOL-home/releases" >> "$OUT/SOURCES.txt"
 printf 'VERSION=%q\nOROS_COMMIT=%q\nWIN_TAG=%q\nLIN_TAG=%q\nCHROMIUM=%q\n' \
   "$VERSION" "$OROS_COMMIT" "$WIN_TAG" "$LIN_TAG" "${LIN_TAG%%-*}" > "$OUT/sources.env"
 for dir in "$LITE" "$FULL"; do

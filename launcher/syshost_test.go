@@ -358,3 +358,38 @@ func TestWatchdog(t *testing.T) {
 		t.Fatal("the second try was watched")
 	}
 }
+
+func TestInternetWindow(t *testing.T) {
+	withFake(t)
+	lay := portableLayout(t)
+	t.Setenv("OROS_PORTABLE_BROWSER", "")
+	if handleSys(lay, sysRequest{Cmd: "status"})["caps"].(map[string]bool)["web"] {
+		t.Fatal("the lite edition offers no Internet window")
+	}
+	if r := handleSys(lay, sysRequest{Cmd: "web.open"}); r["ok"] != false {
+		t.Fatal("web.open without a bundled browser")
+	}
+	t.Setenv("OROS_PORTABLE_BROWSER", "/stick/browser/chrome")
+	var got []string
+	old := webStart
+	webStart = func(name string, args ...string) error { got = append([]string{name}, args...); return nil }
+	defer func() { webStart = old }()
+	if !handleSys(lay, sysRequest{Cmd: "status"})["caps"].(map[string]bool)["web"] {
+		t.Fatal("the Internet window is missing from caps")
+	}
+	if r := handleSys(lay, sysRequest{Cmd: "web.open"}); r["ok"] != true {
+		t.Fatal(r)
+	}
+	a := strings.Join(got, " ")
+	if got[0] != "/stick/browser/chrome" || !strings.Contains(a, "--user-data-dir="+filepath.Join(lay.data, "web")) ||
+		strings.Contains(a, "--app") || strings.Contains(a, "load-extension") || !strings.HasSuffix(a, webHome) {
+		t.Fatalf("Internet window: %s", a)
+	}
+	ubol := filepath.Join(lay.root, ubolDir)
+	must(t, os.MkdirAll(ubol, 0o755))
+	must(t, os.WriteFile(filepath.Join(ubol, "manifest.json"), []byte("{}"), 0o644))
+	handleSys(lay, sysRequest{Cmd: "web.open"})
+	if a := strings.Join(got, " "); !strings.Contains(a, "--load-extension="+ubol) {
+		t.Fatalf("uBlock Origin Lite not loaded: %s", a)
+	}
+}
