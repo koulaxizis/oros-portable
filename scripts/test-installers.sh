@@ -41,8 +41,12 @@ if [ -e "$ROOT/out/orOS-Portable/bridge" ]; then
   test -x "$b" && test -f /opt/oros/bridge/linux/oros-bridge.bundled && test ! -e /opt/oros/bridge/windows
   for f in orOS-Bridge-MIT.txt orOS-Bridge-THIRD_PARTY.md; do test -s "/opt/oros/LICENSES/$f"; done
   "$b" --help | grep -q "orOS Bridge 0\."
-  if "$b" --update > /tmp/bridge-update.log 2>&1; then echo "the bundled bridge updated itself"; exit 1; fi
-  grep -q "orOS updates this copy" /tmp/bridge-update.log
+  # it never replaces itself: "up to date" while it is the latest release, refused once a newer one is out
+  before="$(sha256sum "$b")"
+  "$b" --update > /tmp/bridge-update.log 2>&1 || true
+  cat /tmp/bridge-update.log
+  grep -Eq "is up to date|orOS updates this copy" /tmp/bridge-update.log
+  [ "$(sha256sum "$b")" = "$before" ]
   bhome="$(mktemp -d)"
   HOME="$bhome" "$b" --bundled --port 0 --code-file "$bhome/code" > "$bhome/bridge.log" 2>&1 &
   bpid=$!
