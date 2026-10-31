@@ -33,6 +33,8 @@ The extension then shows in orOS's Quick settings what this computer has (the `c
 
 Internet window (`launcher/sysweb.go`): the **Internet** button next to the System button opens a normal window of the bundled browser (tabs, address bar, DuckDuckGo as the start page) with its own profile in `data/web`, so sites never share storage with orOS, and uBlock Origin Lite (`ubol/`, fetched with oros-usb's `scripts/ubol.sh`). The lite edition has no button: an installed browser is already at hand.
 
+Wi-Fi and Bluetooth (`launcher/sysnet.go`): Wi-Fi is controlled inside orOS as on the stick (networks, password, radio on or off), through NetworkManager's `nmcli` on Linux and the Native Wi-Fi API (`wlanapi.dll`, `net_windows.go`) on Windows. A network Windows knows connects with its saved profile; a new one gets a WPA2/WPA3 personal or open profile; enterprise networks stay with Windows' settings. Passwords are never logged. Bluetooth opens the computer's own settings (`ms-settings:bluetooth`; GNOME, KDE, Cinnamon, Blueman, Blueberry or Xfce on Linux).
+
 White-screen watchdog (`launcher/watchdog.go`): once orOS has painted, the extension pings every 10 s. Where it has pinged before, a main window with no ping within 90 s is ended and started once more with `--disable-gpu`.
 
 ### Computer files (orOS USB only)

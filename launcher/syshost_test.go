@@ -47,6 +47,7 @@ func withFake(t *testing.T) *fakeOps {
 	old := sysPlatform
 	sysPlatform = f
 	t.Cleanup(func() { sysPlatform = old })
+	withFakeNet(t, &fakeNet{}) // no Wi-Fi unless a test gives one
 	return f
 }
 
@@ -114,7 +115,7 @@ func TestHostAnswersFramedMessages(t *testing.T) {
 		t.Fatalf("status: %v", st)
 	}
 	caps := st["caps"].(map[string]any)
-	if caps["update"] != true || caps["window"] != true || caps["exit"] != true || caps["wifi"] != nil {
+	if caps["update"] != true || caps["window"] != true || caps["exit"] != true || caps["wifi"] != false {
 		t.Fatalf("caps: %v", caps)
 	}
 	if r[1]["ok"] != true || f.vol != 100 {
