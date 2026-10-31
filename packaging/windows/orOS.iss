@@ -92,6 +92,7 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 ; A new browser or app version replaces the old folders completely.
 Type: filesandordirs; Name: "{app}\browser"
 Type: filesandordirs; Name: "{app}\app"
+Type: filesandordirs; Name: "{app}\bridge"
 
 [Files]
 Source: "files\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs

@@ -10,6 +10,10 @@ Install [orOS](https://useoros.online) on any Windows or Linux PC, or run it fro
 
 The installed orOS uses its own private browser (ungoogled-chromium), works offline, and keeps itself up to date: new orOS versions download in the background and open the next time you start it (Windows setup and AppImage update themselves too; the .deb tells you when a new version is out). Its data stays on this computer (`%LOCALAPPDATA%\orOS` or `~/.local/share/oros`), apart from useoros.online in your browser and from any stick: use Dropbox sync in orOS to carry it over. Windows may say "Windows protected your PC" because the setup is not signed yet: choose "More info" › "Run anyway".
 
+**orOS Studio with your plugins and sound card:** the installers and the full stick edition carry [orOS Bridge](https://github.com/koulaxizis/oros-bridge), which starts with orOS by itself, so Studio can use your VST3 and CLAP plugins and record through your sound card (ASIO® on Windows; JACK, PipeWire, PulseAudio or ALSA on Linux). The pairing code shows up over orOS the first time Studio connects. ASIO is a registered trademark of Steinberg Media Technologies GmbH.
+
+![ASIO Compatible](https://raw.githubusercontent.com/koulaxizis/oros-bridge/main/asio/logo/asio-compatible-bw.png)
+
 Also from free package managers: `scoop bucket add oros https://github.com/koulaxizis/oros-portable` and `scoop install oros`, or `winget install koulaxizis.orOS` (once the package is listed there). [Code signing policy](https://github.com/koulaxizis/oros-portable#code-signing-policy)
 
 ## Run from a USB stick

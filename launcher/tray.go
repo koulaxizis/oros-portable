@@ -131,6 +131,7 @@ func (t *trayApp) exit() {
 		shutdown(t.srv)
 		t.srv = nil
 	}
+	stopBridge(t.lay)
 	t.mu.Unlock()
 	t.unlock()
 	log.Printf("tray closed")
@@ -150,6 +151,7 @@ func (t *trayApp) takeServer() bool {
 		return false
 	}
 	t.srv = srv
+	startBridge(t.lay) // the bridge lives with the server (bridge.go)
 	return true
 }
 
@@ -248,6 +250,7 @@ func (t *trayApp) release() {
 		shutdown(t.srv)
 		t.srv = nil
 	}
+	stopBridge(t.lay)
 	t.mu.Unlock()
 	t.unlock()
 	t.unlock = func() {}

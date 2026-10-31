@@ -46,6 +46,14 @@ if [ -z "$done" ]; then
   echo "  WARNING: no Chromium tarball under 2 GiB; WRITTEN-OFFER.txt covers it"
 fi
 
+if [ -n "${BRIDGE_TAG:-}" ]; then
+  echo "== orOS Bridge $BRIDGE_TAG (its ASIO module is GPL-3.0)"
+  get "https://github.com/koulaxizis/oros-bridge/archive/refs/tags/$BRIDGE_TAG.tar.gz" "oros-bridge-$BRIDGE_TAG-src.tar.gz"
+  get "https://download.steinberg.net/sdk_downloads/ASIO-SDK_2.3.4_2025-10-15.zip" "ASIO-SDK_2.3.4_2025-10-15.zip"
+  echo "d5ebf0c20dd2c5f43771fd0c1418f4b361bf52434ee670097cfa6b3a335e2eca  $SRC/ASIO-SDK_2.3.4_2025-10-15.zip" | sha256sum -c -
+  get "https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz" "nlohmann-json-3.11.3.tar.xz"
+fi
+
 echo "== AppImage runtime (Linux AppImage)"
 # The runtime is MIT and statically links libfuse (LGPL-2.1); ship its build
 # scripts and the libfuse and squashfuse releases they pin.
