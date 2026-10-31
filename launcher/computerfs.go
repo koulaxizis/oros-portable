@@ -60,6 +60,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -660,7 +661,8 @@ func (c *computerFS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case name == "roots" && r.Method == http.MethodGet:
 		home := c.rootInfo("/home", "home", c.home)
-		writeJSON(w, 200, map[string]any{"home": home, "disks": c.disks()})
+		// os tells orOS Files which Trash this is (Windows: the Recycle Bin).
+		writeJSON(w, 200, map[string]any{"home": home, "disks": c.disks(), "os": runtime.GOOS})
 	case name == "list" && r.Method == http.MethodGet:
 		l, err := c.list(q.Get("path"))
 		if err != nil {

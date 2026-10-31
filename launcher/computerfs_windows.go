@@ -98,13 +98,17 @@ func (c *computerFS) disks() []rootInfo {
 	for _, l := range driveLetters() {
 		root := l + `:\`
 		label, _, _ := volumeInfo(root)
-		name := l + ":"
-		if label != "" {
-			name = label + " (" + l + ":)"
-		}
-		out = append(out, c.rootInfo("/disks/"+l, name, root))
+		out = append(out, c.rootInfo("/disks/"+l, driveName(l, label), root))
 	}
 	return out
+}
+
+// driveName is how Windows shows a drive: "Label (C:)", or "C:".
+func driveName(letter, label string) string {
+	if label == "" {
+		return letter + ":"
+	}
+	return label + " (" + letter + ":)"
 }
 
 func (c *computerFS) diskRoot(name string) (string, bool) {
@@ -241,8 +245,10 @@ func (c *computerFS) diskList() (json.RawMessage, error) {
 		label, fs, ro := volumeInfo(root)
 		_, total, _ := diskSpace(root)
 		usb := driveType(l) == windows.DRIVE_REMOVABLE
-		out = append(out, vol{Path: l + ":", Label: label, FSType: strings.ToLower(fs), Size: total, USB: usb,
-			Mount: root, ReadOnly: ro, Internal: !usb})
+		// Label and Mount as orOS Files pairs them with roots: the name
+		// with its letter, and the place under /disks.
+		out = append(out, vol{Path: l + ":", Label: driveName(l, label), FSType: strings.ToLower(fs), Size: total, USB: usb,
+			Mount: "/disks/" + l, ReadOnly: ro, Internal: !usb})
 	}
 	b, _ := json.Marshal(out)
 	return b, nil

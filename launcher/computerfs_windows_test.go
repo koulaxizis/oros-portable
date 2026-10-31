@@ -3,8 +3,10 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"golang.org/x/sys/windows"
@@ -91,5 +93,25 @@ func TestWindowsHidden(t *testing.T) {
 	}
 	if systemHidden(dir, []string{"plain"}) {
 		t.Error("a missing file counts as hidden")
+	}
+}
+
+func TestWindowsDiskListPairsWithRoots(t *testing.T) {
+	if driveName("C", "") != "C:" || driveName("D", "Data") != "Data (D:)" {
+		t.Fatal("driveName")
+	}
+	c := newComputerFS(t.TempDir(), hostMedia(), "")
+	raw, err := c.diskList()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var vols []struct{ Path, Label, Mount string }
+	if err := json.Unmarshal(raw, &vols); err != nil || len(vols) == 0 {
+		t.Fatalf("%s %v", raw, err)
+	}
+	for _, v := range vols {
+		if v.Mount != "/disks/"+v.Path[:1] || !strings.Contains(v.Label, v.Path) {
+			t.Errorf("volume %+v does not pair with /disks", v)
+		}
 	}
 }
