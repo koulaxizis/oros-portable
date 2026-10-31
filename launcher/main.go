@@ -63,6 +63,11 @@ func main() {
 		}
 		return
 	}
+	if len(os.Args) > 1 && (os.Args[1] == "disks" || os.Args[1] == "mount") {
+		// The disk helper of "This computer" (hostdisks_linux.go).
+		appendLog(lay.data)
+		os.Exit(diskHelper(os.Args[1], os.Args[2:]))
+	}
 	if len(os.Args) > 1 && os.Args[1] == "update-stage" {
 		appendLog(lay.data)
 		stageUpdate(lay)

@@ -6,10 +6,15 @@ package main
 //
 // On orOS USB (the live stick and orOS installed on a disk) the launcher
 // lets the orOS page read and write the user's own folders and the disks
-// opened under /media/oros, through a small API under /__oros/fs/. It is
-// off unless OROS_COMPUTER_FILES=1 (oros-usb's session sets it), so the
-// portable and installed editions on Windows, Linux and macOS are
-// unchanged.
+// opened under /media/oros, through a small API under /__oros/fs/
+// (OROS_COMPUTER_FILES=1, which oros-usb's session sets).
+//
+// orOS Portable and the desktop apps on Linux offer the same, once the
+// user agreed for this computer (fsconsent.go; the desktop apps are on by
+// default): the home folder, and disks opened by udisks under
+// /run/media/<user> or /media/<user>, with the launcher as its own disk
+// helper (hostdisks_linux.go). The orOS Portable folder on the stick and
+// the data folder are never reachable (private).
 //
 // Who can call it: only the orOS page itself. Every request needs
 //   - the Host check that the whole server does (no DNS rebinding);
@@ -84,16 +89,21 @@ type computerFS struct {
 	sudo    func(args ...string) (string, error)
 	run     func(args ...string) (string, error)
 	uid     int
+	// consent decides whether the API answers (nil: always, as in tests);
+	// private are real folders that are never listed or reachable.
+	consent *fsConsent
+	private []string
 
 	mu     sync.Mutex
 	writes map[string]int // active writes per disk, so a disk is not taken away mid-write
 }
 
-// fsAPI is nil unless OROS_COMPUTER_FILES=1 on Linux.
+// fsAPI serves "This computer" on Linux (nil elsewhere, or with
+// OROS_NO_COMPUTER_FILES); whether it answers is fsConsent's call.
 var fsAPI = newComputerFSFromEnv()
 
 func newComputerFSFromEnv() *computerFS {
-	if runtime.GOOS != "linux" || os.Getenv("OROS_COMPUTER_FILES") != "1" {
+	if runtime.GOOS != "linux" || os.Getenv("OROS_NO_COMPUTER_FILES") != "" {
 		return nil
 	}
 	home, err := os.UserHomeDir()
@@ -101,14 +111,57 @@ func newComputerFSFromEnv() *computerFS {
 		log.Printf("computer files: %v", err)
 		return nil
 	}
-	media := os.Getenv("OROS_FS_MEDIA")
-	if media == "" {
-		media = "/media/oros"
+	root, err := rootDir()
+	if err != nil {
+		return nil
 	}
-	c := newComputerFS(home, media, os.Getenv("OROS_FS_HELPER"))
-	log.Printf("computer files: on (home %s, disks %s)", home, media)
+	lay := newLayout(root)
+	if os.Getenv("OROS_COMPUTER_FILES") == "1" { // orOS USB
+		media := os.Getenv("OROS_FS_MEDIA")
+		if media == "" {
+			media = "/media/oros"
+		}
+		c := newComputerFS(home, media, os.Getenv("OROS_FS_HELPER"))
+		c.consent = newFSConsent(lay, true)
+		return c
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return nil
+	}
+	if p := os.Getenv("APPIMAGE"); p != "" {
+		exe = p
+	}
+	c := newComputerFS(home, hostMedia(), exe)
+	c.sudo = c.run // udisks needs no root
+	c.consent = newFSConsent(lay, false)
+	c.private = realPaths(lay.root, lay.data)
 	return c
 }
+
+// realPaths resolves links, so a private folder is found by any path.
+func realPaths(dirs ...string) []string {
+	var out []string
+	for _, d := range dirs {
+		if r, err := filepath.EvalSymlinks(d); err == nil {
+			out = append(out, r)
+		} else if a, err := filepath.Abs(d); err == nil {
+			out = append(out, a)
+		}
+	}
+	return out
+}
+
+func (c *computerFS) isPrivate(real string) bool {
+	for _, p := range c.private {
+		if real == p || strings.HasPrefix(real, p+string(filepath.Separator)) {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *computerFS) on() bool { return c.consent == nil || c.consent.on() }
 
 func newComputerFS(home, media, helper string) *computerFS {
 	b := make([]byte, 32)
@@ -289,6 +342,9 @@ func (c *computerFS) inside(p place) error {
 		r, err := filepath.EvalSymlinks(probe)
 		if err == nil {
 			if r != root && !strings.HasPrefix(r, root+string(filepath.Separator)) {
+				return errHidden
+			}
+			if c.isPrivate(r) {
 				return errHidden
 			}
 			// A link may not lead to a hidden name either.
@@ -917,6 +973,14 @@ func (c *computerFS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusForbidden, map[string]string{"error": "denied", "message": "only orOS may use this"})
 		return
 	}
+	if name == "consent" {
+		c.serveConsent(w, r)
+		return
+	}
+	if !c.on() {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "off", "message": "this computer's files are not shared with orOS"})
+		return
+	}
 	q := r.URL.Query()
 	switch {
 	case name == "roots" && r.Method == http.MethodGet:
@@ -1161,4 +1225,34 @@ func (c *computerFS) trashPartial(dst place) error {
 	}
 	_, err := c.trash(dst)
 	return err
+}
+
+// serveConsent: GET says "on", "off" or "ask" for this computer; POST
+// {"on": true|false} keeps the user's answer (orOS asks once per computer
+// and has a switch in Settings).
+func (c *computerFS) serveConsent(w http.ResponseWriter, r *http.Request) {
+	if c.consent == nil {
+		writeJSON(w, 200, map[string]any{"state": "on", "fixed": true})
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		writeJSON(w, 200, map[string]any{"state": c.consent.state(), "fixed": c.consent.always})
+	case http.MethodPost:
+		var req struct {
+			On *bool `json:"on"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 1024)).Decode(&req); err != nil || req.On == nil {
+			writeErr(w, errBadPath)
+			return
+		}
+		if err := c.consent.set(*req.On); err != nil {
+			writeErr(w, err)
+			return
+		}
+		log.Printf("computer files: %v for this computer", map[bool]string{true: "on", false: "off"}[*req.On])
+		writeJSON(w, 200, map[string]any{"state": c.consent.state(), "fixed": c.consent.always})
+	default:
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "notfound", "message": "unknown call"})
+	}
 }
