@@ -98,6 +98,7 @@ parts inside ungoogled-chromium.
 
 ## Notes
 
+- Private browsing: put a VPN extension in the computer's own browser, not in orOS; see [Private browsing](PRIVATE-BROWSING.md) (EN/EL).
 - Format the stick as NTFS. On Linux the browser locks its profile with symbolic links, which exFAT and FAT32 cannot store (the launcher then says so), and FAT32 also mounts without execute permission. Windows runs from any of them.
 - The Windows launcher is not code-signed, so SmartScreen warns on first run ("More info" → "Run anyway").
 - Close the orOS window before removing the stick; pulling it out while the browser writes can corrupt the profile.
