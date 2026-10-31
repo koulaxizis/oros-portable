@@ -166,6 +166,10 @@ type sysRequest struct {
 	// Wi-Fi (sysnet.go). The password is used once and never logged.
 	SSID     string `json:"ssid,omitempty"`
 	Password string `json:"password,omitempty"`
+	// Web is orOS's own part of a problem report (Settings › System ›
+	// Report a problem, already shown to the person); it goes into the
+	// zip as oros.txt.
+	Web string `json:"web,omitempty"`
 }
 
 type sysReply map[string]any
@@ -287,7 +291,7 @@ func handleSys(lay layout, req sysRequest) sysReply {
 		}
 		return ok(nil)
 	case "report":
-		f, err := writeSysReport(lay, p.downloads())
+		f, err := writeSysReport(lay, p.downloads(), req.Web)
 		if err != nil {
 			return sysFail(err)
 		}
