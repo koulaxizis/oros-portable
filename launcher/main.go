@@ -37,6 +37,8 @@ const (
 	appURL     = "http://localhost:47800/"
 	markerPath = "/__oros-portable"
 	markerBody = "oros-portable"
+	// The computer files API (computerfs.go), off unless orOS USB asks.
+	fsPrefix = "/__oros/fs/"
 )
 
 var version = "0.1.0"
@@ -246,6 +248,14 @@ func newDirHandler(dir func() string) http.Handler {
 			_, _ = io.WriteString(w, markerBody)
 			return
 		}
+		if strings.HasPrefix(r.URL.Path, fsPrefix) {
+			if fsAPI == nil {
+				http.NotFound(w, r)
+				return
+			}
+			fsAPI.ServeHTTP(w, r)
+			return
+		}
 		if r.URL.Path == quickPath {
 			// The small window's own address (window.go); the browser keeps
 			// the "#quick-win" fragment across the redirect.
@@ -261,6 +271,9 @@ func newDirHandler(dir func() string) http.Handler {
 		}
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		if fsAPI != nil && (strings.HasSuffix(r.URL.Path, "/") || strings.HasSuffix(r.URL.Path, ".html")) {
+			fsAPI.setCookie(w)
+		}
 		http.FileServer(http.Dir(dir())).ServeHTTP(w, r)
 	})
 }

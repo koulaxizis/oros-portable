@@ -25,6 +25,24 @@ The address never changes, because the browser ties stored data to it. When port
 
 The lite edition has no bundled browser and uses an installed Chromium, Brave, Edge or Chrome, with a separate `data/profile-system/` profile (a profile from a newer Chromium may not open in an older one). If the bundled browser fails to start (for example a Linux system that blocks its sandbox), the launcher falls back to an installed one.
 
+### Computer files (orOS USB only)
+
+On [orOS USB](https://github.com/koulaxizis/oros-usb) (the live stick and orOS installed on a disk) the launcher also gives the orOS Files app the computer's own files: the home folder and the disks opened under `/media/oros` (`launcher/computerfs.go`, API under `/__oros/fs/`). It is off unless `OROS_COMPUTER_FILES=1` on Linux, which only orOS USB's session sets; the portable and installed editions are unchanged.
+
+- **Only orOS may call it:** a random key in an `HttpOnly`, `SameSite=Strict` cookie (new at every start, sent with orOS's pages), `Sec-Fetch-Site: same-origin`, the same Origin, and the `X-Oros-FS: 1` header on everything but plain file reads. Other sites, other localhost ports and the Internet window (another profile) are refused.
+- **Only the user's files:** `/home/...` is the home folder without names starting with `.` and without `~/oros` (the launcher and browser profiles); `/disks/<name>/...` is a disk while it is mounted. No symbolic link leads out of its place or to a hidden name.
+- **Nothing is lost:** writes go to a hidden temporary file, are flushed and renamed; `replace=1` is needed to overwrite and `ifmtime` refuses a file changed elsewhere (412). Removing moves to the freedesktop.org Trash (the home Trash, or the disk's own `.Trash-<uid>`), from where items can be restored or emptied. A move to another disk copies, reads every file back against its SHA-256, and only then trashes the original. A disk is not unmounted while a copy to it runs.
+- **Nothing runs:** files are served with `Content-Security-Policy: sandbox` and web pages as plain text. Disks are listed and mounted by the helper in `OROS_FS_HELPER` (`oros-system disks`, `sudo -n oros-system mount --dev /dev/sdX1 [--unmount]`).
+
+| Call | |
+|---|---|
+| `GET roots` | home and mounted disks, with free and total space and read-only |
+| `GET list?path=`, `GET stat?path=` | folder entries `{name, path, dir, size, mtime}` |
+| `GET raw?path=` | the file (Range requests for video and audio); `X-Oros-MTime` |
+| `PUT raw?path=[&replace=1][&ifmtime=ms]` | write the request body |
+| `POST op` `{op, path, to, root, id, dev}` | `mkdir`, `rename`, `copy`, `move`, `trash`, `restore`, `purge`, `mount`, `unmount` |
+| `GET trash`, `GET disks` | the Trash items, the disks that can be opened |
+
 ## Installers
 
 The same launcher and browser also install on a computer (`scripts/build-installers.sh`, built in CI next to the portable zips):
