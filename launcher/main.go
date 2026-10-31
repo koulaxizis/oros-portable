@@ -55,7 +55,21 @@ func main() {
 	if lay.installed {
 		appTitle = "orOS"
 	}
+	if isHostCall(os.Args) {
+		// Chromium started the launcher as the System extension's host.
+		appendLog(lay.data)
+		if err := runSysHost(lay, os.Stdin, os.Stdout); err != nil {
+			log.Printf("system host: %v", err)
+		}
+		return
+	}
+	if len(os.Args) > 1 && os.Args[1] == "update-stage" {
+		appendLog(lay.data)
+		stageUpdate(lay)
+		return
+	}
 	setupLog(lay.data)
+	defer unregisterHost()
 	cmd := ""
 	if len(os.Args) > 1 {
 		cmd = os.Args[1]
@@ -115,6 +129,26 @@ func setupLog(dir string) {
 		return
 	}
 	log.SetOutput(io.MultiWriter(os.Stderr, f))
+}
+
+// appendLog is the log of the short runs (the native host, the update
+// download): they must not wipe launcher.log of the window that is open.
+// It starts again when it passes a megabyte.
+func appendLog(dir string) {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return
+	}
+	name := filepath.Join(dir, "system.log")
+	flags := os.O_CREATE | os.O_WRONLY | os.O_APPEND
+	if st, err := os.Stat(name); err == nil && st.Size() > 1<<20 {
+		flags |= os.O_TRUNC
+	}
+	f, err := os.OpenFile(name, flags, 0o644)
+	if err != nil {
+		log.SetOutput(io.Discard)
+		return
+	}
+	log.SetOutput(f) // never stdout: that is the host's channel to Chromium
 }
 
 func run(lay layout) {
@@ -313,6 +347,7 @@ func extraArgs() []string {
 type candidate struct {
 	path    string
 	profile string
+	bundled bool // the browser on the stick (or the test's): it loads the System extension
 }
 
 // browserCandidates lists the bundled browser first, then installed
@@ -322,13 +357,13 @@ func browserCandidates(lay layout) []candidate {
 	data := lay.data
 	var out []candidate
 	if p := os.Getenv("OROS_PORTABLE_BROWSER"); p != "" {
-		out = append(out, candidate{p, filepath.Join(data, "profile")})
+		out = append(out, candidate{p, filepath.Join(data, "profile"), true})
 	}
 	for _, p := range bundledBrowsers(lay.root) {
-		out = append(out, candidate{p, filepath.Join(data, "profile")})
+		out = append(out, candidate{p, filepath.Join(data, "profile"), true})
 	}
 	for _, p := range systemBrowsers() {
-		out = append(out, candidate{p, filepath.Join(data, "profile-system")})
+		out = append(out, candidate{p, filepath.Join(data, "profile-system"), false})
 	}
 	return out
 }
@@ -385,16 +420,26 @@ func launchBrowser(lay layout, url string, extra ...string) error {
 		return errors.New("No browser was found. Put the browser folder next to the launcher, or install Chromium, Edge, Brave or Chrome.")
 	}
 	for _, c := range list {
-		log.Printf("starting %s (profile %s)", c.path, c.profile)
-		cmd := exec.Command(c.path, windowArgs(c.profile, url, extra)...)
-		start := time.Now()
-		err := cmd.Run()
-		if err != nil && time.Since(start) < 5*time.Second {
-			log.Printf("browser failed early: %v, trying the next one", err)
-			continue
+		args := append(append([]string{}, extra...), sysBrowserArgs(lay, c, url)...)
+		for try := 0; try < 2; try++ {
+			log.Printf("starting %s (profile %s)", c.path, c.profile)
+			cmd := exec.Command(c.path, windowArgs(c.profile, url, args)...)
+			start := time.Now()
+			gaveUp, err := runWatched(lay, c, url, cmd, try == 0)
+			if gaveUp {
+				// No sign of life from orOS: start again once, without the
+				// GPU (the usual cause of a white window).
+				waitProfileClosed(c.profile)
+				args = append(args, "--disable-gpu")
+				continue
+			}
+			if err != nil && time.Since(start) < 5*time.Second {
+				log.Printf("browser failed early: %v, trying the next one", err)
+				break
+			}
+			waitProfileClosed(c.profile)
+			return nil
 		}
-		waitProfileClosed(c.profile)
-		return nil
 	}
 	return errors.New("None of the browsers could start. See " + filepath.Join(lay.data, "launcher.log") + ".")
 }

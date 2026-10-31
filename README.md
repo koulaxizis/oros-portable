@@ -25,6 +25,14 @@ The address never changes, because the browser ties stored data to it. When port
 
 The lite edition has no bundled browser and uses an installed Chromium, Brave, Edge or Chrome, with a separate `data/profile-system/` profile (a profile from a newer Chromium may not open in an older one). If the bundled browser fails to start (for example a Linux system that blocks its sandbox), the launcher falls back to an installed one.
 
+### System in Quick settings (full edition and installers)
+
+The full edition and the installers carry orOS USB's System extension (`system/`, fetched from [oros-usb](https://github.com/koulaxizis/oros-usb) `system/extension` by `scripts/build.sh`). The bundled browser loads it with `--load-extension` (Edge and Chrome refuse that flag, so the lite edition and installed browsers go without), and the launcher itself is its native messaging host `online.useoros.system` (`launcher/syshost.go`): Chromium starts `orOS chrome-extension://…/` for each message. On Linux the host manifest lives in the profile (`NativeMessagingHosts/`); on Windows in the data folder with a key under `HKCU\Software\Chromium\NativeMessagingHosts`, which a portable copy takes away again when orOS closes.
+
+The extension then shows in orOS's Quick settings what this computer has (the `caps` in `status`): sound and mute (PipeWire/PulseAudio; Windows Core Audio), screen brightness (logind backlight; WMI on laptops), battery, sleep, restart and shut down of the computer (each confirmed), leaving orOS, full screen or a window, a report zip in Downloads, and, on a stick, "Update orOS" (downloaded by a detached `orOS update-stage` into `app.next`, swapped in at the next start). The stick opens orOS in full screen and the installed apps in a window; the choice is kept in `data/session.json`. Short runs (the host, the update download) log to `system.log` so the window's `launcher.log` stays whole.
+
+White-screen watchdog (`launcher/watchdog.go`): once orOS has painted, the extension pings every 10 s. Where it has pinged before, a main window with no ping within 90 s is ended and started once more with `--disable-gpu`.
+
 ### Computer files (orOS USB only)
 
 On [orOS USB](https://github.com/koulaxizis/oros-usb) (the live stick and orOS installed on a disk) the launcher also gives the orOS Files app the computer's own files: the home folder and the disks opened under `/media/oros` (`launcher/computerfs.go`, API under `/__oros/fs/`). It is off unless `OROS_COMPUTER_FILES=1` on Linux, which only orOS USB's session sets; the portable and installed editions are unchanged.
@@ -85,6 +93,7 @@ Window placement (`launcher/window.go`): the main orOS window opens maximised an
 | `orOS remove-menu` | remove the menu entry that the AppImage added (and its start at login) |
 | `orOS tray` | installed copies: the tray icon (see Tray) |
 | `orOS quick` | the small "Add or search" window |
+| `orOS update-stage` | download orOS into `app.next` for the next start (the System panel's "Update orOS") |
 
 `OROS_PORTABLE_BROWSER` and `OROS_PORTABLE_BROWSER_ARGS` override the browser and add flags (used by tests).
 
