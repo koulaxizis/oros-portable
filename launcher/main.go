@@ -362,7 +362,7 @@ func browserArgs(profile, url string, extra ...string) []string {
 		args = append(args, "--password-store=basic")
 	}
 	args = append(args, extra...)
-	return append(args, extraArgs()...)
+	return joinExtensions(append(args, extraArgs()...))
 }
 
 // extraArgs lets tests add flags such as --headless=new.

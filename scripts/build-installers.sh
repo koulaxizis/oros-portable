@@ -29,6 +29,8 @@ stage() { # stage <dest> <os: linux|windows>
   cp -r "$FULL/browser/$os" "$dest/browser/$os"
   if [ -d "$FULL/system" ]; then cp -r "$FULL/system" "$dest/"; fi
   if [ -d "$FULL/ubol" ]; then cp -r "$FULL/ubol" "$dest/"; fi
+  # The orOS add-on for the Internet window (launcher/sysweb.go)
+  if [ -d "$FULL/addon" ]; then cp -r "$FULL/addon" "$dest/"; fi
   # Tor Browser's signing key (launcher/tor.go)
   if [ -f "$FULL/tor-browser-developers.gpg" ]; then cp "$FULL/tor-browser-developers.gpg" "$dest/"; fi
   # orOS Bridge for this system only (launcher/bridge.go)

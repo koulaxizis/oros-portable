@@ -751,7 +751,8 @@ func (s *usersServer) sizes() map[string]int64 {
 	for _, u := range l.Users {
 		if u.Dir == "" {
 			var n int64
-			for _, p := range []string{"profile", "profile-system", webFolder} {
+			// "web": the Internet window's profile up to 0.6.0.
+			for _, p := range []string{"profile", "profile-system", "web"} {
 				n += dirSize(filepath.Join(s.data, p))
 			}
 			out[u.ID] = n

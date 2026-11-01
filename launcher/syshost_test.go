@@ -234,6 +234,15 @@ func TestBrowserArgs(t *testing.T) {
 	if a := sysBrowserArgs(lay, candidate{path: "msedge", profile: c.profile}, appURL); a != nil {
 		t.Fatalf("other browsers refuse --load-extension: %v", a)
 	}
+	// The orOS add-on and uBlock Origin Lite load with it, in one list.
+	addon, ubol := filepath.Join(lay.root, addonDir), filepath.Join(lay.root, ubolDir)
+	for _, d := range []string{addon, ubol} {
+		must(t, os.MkdirAll(d, 0o755))
+		must(t, os.WriteFile(filepath.Join(d, "manifest.json"), []byte("{}"), 0o644))
+	}
+	if a := sysBrowserArgs(lay, c, appURL); len(a) != 1 || a[0] != "--load-extension="+ext+","+addon+","+ubol {
+		t.Fatalf("extensions: %v", a)
+	}
 	if runtime.GOOS == "linux" {
 		b, err := os.ReadFile(filepath.Join(c.profile, "NativeMessagingHosts", hostName+".json"))
 		if err != nil {
@@ -382,17 +391,47 @@ func TestInternetWindow(t *testing.T) {
 	if r := handleSys(lay, sysRequest{Cmd: "web.open"}); r["ok"] != true {
 		t.Fatal(r)
 	}
+	// orOS's own profile, so the window joins orOS's browser and the
+	// orOS add-on there reaches Passwords.
 	a := strings.Join(got, " ")
-	if got[0] != "/stick/browser/chrome" || !strings.Contains(a, "--user-data-dir="+filepath.Join(lay.data, "web")) ||
+	if got[0] != "/stick/browser/chrome" || !strings.Contains(a, "--user-data-dir="+filepath.Join(lay.data, "profile")+" ") ||
 		strings.Contains(a, "--app") || strings.Contains(a, "load-extension") || !strings.HasSuffix(a, webHome) {
 		t.Fatalf("Internet window: %s", a)
 	}
-	ubol := filepath.Join(lay.root, ubolDir)
-	must(t, os.MkdirAll(ubol, 0o755))
-	must(t, os.WriteFile(filepath.Join(ubol, "manifest.json"), []byte("{}"), 0o644))
+	if _, err := os.Stat(filepath.Join(lay.data, "web")); err == nil {
+		t.Fatal("the old web profile is not made any more")
+	}
+	sys, addon, ubol := filepath.Join(lay.root, sysExtFolder), filepath.Join(lay.root, addonDir), filepath.Join(lay.root, ubolDir)
+	for _, d := range []string{addon, ubol} {
+		must(t, os.MkdirAll(d, 0o755))
+		must(t, os.WriteFile(filepath.Join(d, "manifest.json"), []byte("{}"), 0o644))
+	}
 	handleSys(lay, sysRequest{Cmd: "web.open"})
-	if a := strings.Join(got, " "); !strings.Contains(a, "--load-extension="+ubol) {
-		t.Fatalf("uBlock Origin Lite not loaded: %s", a)
+	if a := strings.Join(got, " "); !strings.Contains(a, " --load-extension="+addon+","+ubol+" ") {
+		t.Fatalf("the add-on and uBlock Origin Lite not loaded: %s", a)
+	}
+	// The same list as orOS's window, with what OROS_PORTABLE_BROWSER_ARGS
+	// brings merged in (Chromium reads one flag only).
+	must(t, os.MkdirAll(sys, 0o755))
+	must(t, os.WriteFile(filepath.Join(sys, "manifest.json"), []byte("{}"), 0o644))
+	t.Setenv("OROS_PORTABLE_BROWSER_ARGS", "--headless=new --load-extension=/opt/x,"+ubol)
+	handleSys(lay, sysRequest{Cmd: "web.open"})
+	a = strings.Join(got, " ")
+	if strings.Count(a, "--load-extension") != 1 || !strings.Contains(a, " --load-extension="+sys+","+addon+","+ubol+",/opt/x --headless=new ") {
+		t.Fatalf("merged extensions: %s", a)
+	}
+}
+
+func TestJoinExtensions(t *testing.T) {
+	for _, c := range []struct{ in, out string }{
+		{"--a --b", "--a --b"},
+		{"--a --load-extension=/x --b", "--a --load-extension=/x --b"},
+		{"--a --load-extension=/x --b --load-extension=/y,/x --c", "--a --load-extension=/x,/y --b --c"},
+		{"--load-extension= --a", "--a"},
+	} {
+		if got := strings.Join(joinExtensions(strings.Fields(c.in)), " "); got != c.out {
+			t.Errorf("%q: %q, want %q", c.in, got, c.out)
+		}
 	}
 }
 

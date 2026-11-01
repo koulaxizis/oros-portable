@@ -462,7 +462,7 @@ func TestSessionJoinsTheOpenUser(t *testing.T) {
 		t.Fatal("a joined window must not end Anna's session")
 	}
 	// Her Internet window and her "This computer" answer are hers too.
-	if !strings.Contains(strings.Join(webArgs(lay), " "), filepath.Join(data, "users", anna, webFolder)) {
+	if !strings.Contains(strings.Join(webArgs(lay), " "), filepath.Join(data, "users", anna, webProfile)+" ") {
 		t.Fatal("web profile")
 	}
 	if c := newFSConsent(lay, false); c.path() != filepath.Join(data, "users", anna, consentFile) {

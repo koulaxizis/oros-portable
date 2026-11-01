@@ -17,6 +17,10 @@ Christos Koulaxizis with the work of many others. Thank you to:
   Internet window of the full edition and the installers (ubol/), GPL-3.0.
   Its licence and source address are inside ubol/ (LICENSE.txt).
   https://github.com/uBlockOrigin/uBOL-home
+- orOS add-on (koulaxizis/oros extension/, MIT; its Argon2 is hash-wasm,
+  MIT, licence in addon/pm/LICENSE-hash-wasm): Passwords fill and save in
+  the Internet window of the full edition and the installers (addon/), its
+  orOS address preset to this launcher. https://github.com/koulaxizis/oros
 - The Tor Project: Tor Browser, which the Tor button of the full edition and
   the installers downloads from torproject.org on first use (it is not part
   of this download), checked against the Tor Browser Developers' signing key

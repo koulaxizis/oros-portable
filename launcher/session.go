@@ -72,8 +72,9 @@ func runSession(lay layout, url string, extra []string, launch launchFunc) error
 		if !takeSignOut(lay.data) || !loadUsers(lay.data).enabled() {
 			return nil
 		}
-		// The next user must not find this one's Internet window open.
-		closeProfile(filepath.Join(ul.userFolder(), webFolder))
+		// The Internet window shares the user's profile (sysweb.go), so
+		// it has closed too: launch returns when the profile is free, and
+		// the System extension closes every window of it on sign-out.
 		log.Printf("users: signed out, showing the sign-in window")
 		url, extra = appURL, nil
 	}
