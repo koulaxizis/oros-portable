@@ -68,6 +68,11 @@ func main() {
 		appendLog(lay.data)
 		os.Exit(diskHelper(os.Args[1], os.Args[2:]))
 	}
+	if len(os.Args) > 1 && os.Args[1] == "tor" {
+		// The Tor button's download or window (tor.go).
+		appendLog(lay.data)
+		os.Exit(torMain(lay, os.Args[2:]))
+	}
 	if len(os.Args) > 1 && os.Args[1] == "update-stage" {
 		appendLog(lay.data)
 		stageUpdate(lay)

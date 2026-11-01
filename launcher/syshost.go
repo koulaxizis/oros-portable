@@ -310,6 +310,12 @@ func handleSys(lay layout, req sysRequest) sysReply {
 		return updateStatus(lay)
 	case "web.open":
 		return openWeb(lay)
+	case "tor.open":
+		return openTor(lay)
+	case "tor.status":
+		return torStatus(lay)
+	case "tor.remove":
+		return removeTor(lay)
 	}
 	return sysFail(errUnsupported)
 }
@@ -326,8 +332,9 @@ func sysStatus(lay layout, p platformOps) sysReply {
 			// Parts the extension shows; the rest stays hidden.
 			"sound": true, "screen": true, "power": true, "sleep": true,
 			"exit": true, "window": true, "report": true,
-			"update": !lay.installed,        // installed copies update themselves
-			"web":    webBrowser(lay) != "", // the Internet window (sysweb.go)
+			"update": !lay.installed,                             // installed copies update themselves
+			"web":    webBrowser(lay) != "",                      // the Internet window (sysweb.go)
+			"tor":    webBrowser(lay) != "" && torAvailable(lay), // tor.go
 		},
 	}
 	if v, m, ok := p.volume(); ok {

@@ -32,6 +32,20 @@ jobs:
           sudo mkdir -p /mnt/fscrypt && sudo mount -o loop /tmp/fscrypt.img /mnt/fscrypt
           sudo install -d -o "$(id -u)" -m 700 /mnt/fscrypt/t
           OROS_FSCRYPT_DIR=/mnt/fscrypt/t /tmp/launcher.test -test.run 'Fscrypt' -test.v
+      - name: Tor button with the real Tor Browser (download, signature, unpack)
+        run: |
+          cd launcher && go build -o /tmp/orOS .
+          # with the bundled key, as a build puts it next to the launcher
+          R="$(mktemp -d)"
+          curl -fsSL --retry 3 -o /tmp/tor-key.sh https://raw.githubusercontent.com/koulaxizis/oros-usb/main/scripts/tor-key.sh
+          sh /tmp/tor-key.sh "$R/tor-browser-developers.gpg"
+          OROS_PORTABLE_ROOT="$R" /tmp/orOS tor --fetch --no-start --dir "$R/tor" --progress "$R/tor.json" || { cat "$R/tor.json" "$R/data/system.log"; exit 1; }
+          test -x "$R/tor/tor-browser/Browser/start-tor-browser"
+          grep -q '"done":true' "$R/tor.json" && ! grep -q error "$R/tor.json"
+          # without it: the key comes from torproject.org, pinned fingerprint
+          R2="$(mktemp -d)"
+          OROS_PORTABLE_ROOT="$R2" /tmp/orOS tor --fetch --no-start --dir "$R2/tor" --progress "$R2/tor.json" || { cat "$R2/tor.json" "$R2/data/system.log"; exit 1; }
+          test -x "$R2/tor/tor-browser/Browser/start-tor-browser"
       - name: Stick script test (loop devices)
         run: |
           sudo apt-get update -q && sudo apt-get install -y -q ntfs-3g
@@ -48,6 +62,32 @@ jobs:
           go-version: "1.22"
       - run: cd launcher; go vet ./...; if ($LASTEXITCODE) { exit 1 }; go test -run 'TestWindows' -v .
         shell: pwsh
+      - name: Tor button with the real Tor Browser (silent install, nothing left outside its folder)
+        shell: pwsh
+        run: |
+          cd launcher; go build -o "$env:RUNNER_TEMP\orOS.exe" .; if ($LASTEXITCODE) { exit 1 }
+          $r = Join-Path $env:RUNNER_TEMP 'stick with spaces'   # NSIS /D= takes the path unquoted
+          New-Item -ItemType Directory $r | Out-Null
+          $folders = @([Environment]::GetFolderPath('Desktop'), [Environment]::GetFolderPath('Programs'),
+            [Environment]::GetFolderPath('CommonDesktopDirectory'), [Environment]::GetFolderPath('CommonPrograms'))
+          # a Tor Browser shortcut of the person's own must survive
+          $own = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Tor Browser.lnk'
+          Set-Content $own 'mine'
+          $before = @($folders | ForEach-Object { Get-ChildItem $_ -Name })
+          $env:OROS_PORTABLE_ROOT = $r
+          & "$env:RUNNER_TEMP\orOS.exe" tor --fetch --no-start --dir "$r\tor" --progress "$r\tor.json"
+          if ($LASTEXITCODE) { Get-Content "$r\tor.json"; Get-Content "$r\data\system.log" -ErrorAction SilentlyContinue; exit 1 }
+          if (-not (Test-Path "$r\tor\tor-browser\Browser\firefox.exe")) { Get-ChildItem -Recurse "$r\tor" | Select-Object -First 30; exit 1 }
+          $after = @($folders | ForEach-Object { Get-ChildItem $_ -Name })
+          $new = @($after | Where-Object { $before -notcontains $_ })
+          if ($new.Count) { "left behind: $new"; exit 1 }
+          if ((Get-Content $own) -ne 'mine') { "the person's own shortcut was replaced"; exit 1 }
+          foreach ($h in 'HKCU:', 'HKLM:') {
+            $hit = Get-ChildItem "$h\Software\Microsoft\Windows\CurrentVersion\Uninstall" -ErrorAction SilentlyContinue |
+              Where-Object { "$($_.GetValue('InstallLocation')) $($_.GetValue('UninstallString'))" -like "*$r*" }
+            if ($hit) { "Add or remove programs entry left: $($hit.Name)"; exit 1 }
+          }
+          Get-Content "$r\tor.json"
 
   package:
     needs: test

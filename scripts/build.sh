@@ -68,6 +68,10 @@ ls "$FULL/system/manifest.json" "$FULL/system/content.js" >/dev/null
 # uBlock Origin Lite for the Internet window (launcher/sysweb.go), with
 # orOS USB's own script: checked against the release's SHA-256.
 UBOL="$(sh "$(find "$TMP" -maxdepth 3 -type f -path '*/scripts/ubol.sh' | head -1)" "$FULL/ubol" | tail -1)"
+# Tor Browser's signing key for the Tor button (launcher/tor.go), with
+# orOS USB's own script: fetched from torproject.org and kept only with the
+# fingerprint pinned there. Needs gpg.
+sh "$(find "$TMP" -maxdepth 3 -type f -path '*/scripts/tor-key.sh' | head -1)" "$FULL/tor-browser-developers.gpg"
 USB_COMMIT="$(gh api repos/koulaxizis/oros-usb/commits/main -q .sha 2>/dev/null || echo unknown)"
 rm -rf "$TMP"
 
@@ -114,7 +118,9 @@ echo "== licences and sources"
 "$ROOT/scripts/sources-manifest.sh" "$VERSION" "$OROS_COMMIT" "$WIN_TAG" "$LIN_TAG" > "$OUT/SOURCES.txt"
 printf '%s\n' "" "Full edition and installers also carry:" \
   "  system/  orOS USB System extension (MIT), https://github.com/koulaxizis/oros-usb/tree/$USB_COMMIT/system/extension" \
-  "  ubol/    ${UBOL%% ->*} (GPL-3.0), https://github.com/uBlockOrigin/uBOL-home/releases" >> "$OUT/SOURCES.txt"
+  "  ubol/    ${UBOL%% ->*} (GPL-3.0), https://github.com/uBlockOrigin/uBOL-home/releases" \
+  "  tor-browser-developers.gpg  Tor Browser's public signing key (EF6E 286D DA85 EA2A 4BA7 DE68 4E2C 6E87 9329 8290)," \
+  "    for the Tor button; Tor Browser itself is not carried, the button downloads it from torproject.org" >> "$OUT/SOURCES.txt"
 if [ -n "$BRIDGE_TAG" ]; then
   printf '%s\n' "" "Full edition and installers also carry orOS Bridge (bridge/), $BRIDGE_TAG:" \
     "  oros-bridge, oros-bridge.exe  MIT, https://github.com/koulaxizis/oros-bridge/tree/$BRIDGE_TAG" \
@@ -133,10 +139,13 @@ for dir in "$LITE" "$FULL"; do
   if [ -f "$dir/app/LICENSE" ]; then cp "$dir/app/LICENSE" "$dir/LICENSES/orOS-MIT.txt"; fi
   cp "$ROOT/packaging/CREDITS.txt" "$dir/LICENSES/CREDITS.txt"
   # The launcher is a Go program: the Go standard library's licence goes with it,
-  # and those of the Go modules it is built with (go.mod: the tray icon).
+  # and those of the Go modules it is built with (go.mod: the tray icon, and
+  # the Tor button's signature check and .tar.xz unpacking).
   cp "$(go env GOROOT)/LICENSE" "$dir/LICENSES/Go-BSD.txt"
   for m in "fyne.io/systray:systray-Apache-2.0.txt" "github.com/godbus/dbus/v5:godbus-BSD-2.txt" \
-           "golang.org/x/sys:golang-x-sys-BSD.txt"; do
+           "golang.org/x/sys:golang-x-sys-BSD.txt" "github.com/ProtonMail/go-crypto:go-crypto-BSD.txt" \
+           "github.com/cloudflare/circl:circl-BSD.txt" "golang.org/x/crypto:golang-x-crypto-BSD.txt" \
+           "github.com/ulikunitz/xz:xz-BSD.txt"; do
     mdir="$(cd "$ROOT/launcher" && go list -m -f '{{.Dir}}' "${m%%:*}")"
     cp "$mdir/LICENSE" "$dir/LICENSES/${m#*:}"
   done

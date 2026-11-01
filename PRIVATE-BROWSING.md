@@ -23,11 +23,22 @@ Put the extension in the computer's **own browser** (for example Brave, Chromium
 - Open-source apps and extensions are a plus.
 - Avoid free VPNs from unknown companies: many sell your browsing data.
 
+## Tor button (full edition and installers)
+
+Next to **Internet** at the top of orOS, the **Tor** button opens the official Tor Browser in its own window. Close it to return to orOS.
+
+- The first press asks, then downloads Tor Browser (about 110 MB) from torproject.org, checks its signature against the Tor Project's signing key and installs it in your own orOS folder (`data/tor` on the stick, `%LOCALAPPDATA%\orOS\tor` or `~/.local/share/oros/tor` when installed). The button shows how far it is. It needs about 1 GB free.
+- After that it opens at once and Tor Browser updates itself.
+- Each orOS user has their own Tor Browser, with their own bookmarks and settings. The guest has none.
+- The System panel (Quick settings › System) has **Remove Tor Browser**, which frees the space again.
+- On Windows the official installer runs silently into that folder; the shortcuts and the Add or remove programs entry it makes are taken away again. Windows may still remember that a program ran from the stick (for example in its Prefetch list). For no trace at all on the computer, use orOS USB, which starts without the computer's own system.
+- The lite edition has no Tor button: there, install Tor Browser from torproject.org yourself.
+
 ## Good to know
 
 - Only the browser with the extension is covered. Streams opened inside orOS (Television, Radio) use your normal connection.
 - A browser extension is a proxy, not a full VPN. Before you press Connect, or if the connection drops, the browser uses your normal connection. Check the icon first.
-- For really sensitive searches, Tor Browser (torproject.org, free and open source) hides more than a VPN, but it is too slow for video. Your internet provider can see that you use Tor.
+- For really sensitive searches, Tor Browser (the Tor button above) hides more than a VPN, but it is too slow for video. Your internet provider can see that you use Tor.
 - A private (incognito) window hides nothing from your internet provider; it only keeps no history on the computer.
 
 ---
@@ -57,9 +68,20 @@ Put the extension in the computer's **own browser** (for example Brave, Chromium
 - Ανοιχτός κώδικας στις εφαρμογές και στο extension είναι συν.
 - Απόφυγε δωρεάν VPN άγνωστων εταιρειών: πολλά πουλάνε τα δεδομένα περιήγησης.
 
+## Κουμπί Tor (πλήρης έκδοση και εγκαταστάτες)
+
+Δίπλα στο **Internet**, στην πάνω μπάρα του orOS, το κουμπί **Tor** ανοίγει το επίσημο Tor Browser σε δικό του παράθυρο. Κλείσ' το για να γυρίσεις στο orOS.
+
+- Το πρώτο πάτημα ρωτά και μετά κατεβάζει το Tor Browser (περίπου 110 MB) από το torproject.org, ελέγχει την υπογραφή του με το κλειδί του Tor Project και το εγκαθιστά στον δικό σου φάκελο του orOS (`data/tor` στο stick, `%LOCALAPPDATA%\orOS\tor` ή `~/.local/share/oros/tor` στην εγκατάσταση). Το κουμπί δείχνει την πρόοδο. Χρειάζεται περίπου 1 GB ελεύθερο.
+- Από εκεί και πέρα ανοίγει αμέσως, και το Tor Browser ενημερώνεται μόνο του.
+- Κάθε χρήστης του orOS έχει δικό του Tor Browser, με δικούς του σελιδοδείκτες και ρυθμίσεις. Ο επισκέπτης δεν έχει.
+- Ο πίνακας System (Γρήγορες ρυθμίσεις › System) έχει το **Αφαίρεση του Tor Browser**, που ελευθερώνει ξανά τον χώρο.
+- Στα Windows ο επίσημος installer τρέχει σιωπηλά σε αυτόν τον φάκελο· τα shortcuts και η εγγραφή στην «Προσθαφαίρεση προγραμμάτων» που φτιάχνει αφαιρούνται ξανά. Τα Windows μπορεί πάλι να θυμούνται ότι έτρεξε ένα πρόγραμμα από το stick (π.χ. στη λίστα Prefetch). Για κανένα ίχνος στον υπολογιστή, χρησιμοποίησε το orOS USB, που ξεκινά χωρίς το σύστημα του υπολογιστή.
+- Η έκδοση Lite δεν έχει κουμπί Tor: εκεί εγκατάστησε μόνος σου το Tor Browser από το torproject.org.
+
 ## Καλό να ξέρεις
 
 - Καλύπτεται μόνο ο browser με το extension. Ό,τι ανοίγει μέσα στο orOS (Television, Radio) περνά από την κανονική σου σύνδεση.
 - Ένα extension είναι proxy, όχι πλήρες VPN. Πριν πατήσεις σύνδεση, ή αν πέσει η σύνδεση, ο browser βγαίνει από την κανονική σου σύνδεση. Κοίτα πρώτα το εικονίδιο.
-- Για πραγματικά ευαίσθητες αναζητήσεις, το Tor Browser (torproject.org, δωρεάν και ανοιχτού κώδικα) κρύβει περισσότερα από ένα VPN, αλλά είναι πολύ αργό για βίντεο. Ο πάροχος internet βλέπει ότι χρησιμοποιείς Tor.
+- Για πραγματικά ευαίσθητες αναζητήσεις, το Tor Browser (το κουμπί Tor πιο πάνω) κρύβει περισσότερα από ένα VPN, αλλά είναι πολύ αργό για βίντεο. Ο πάροχος internet βλέπει ότι χρησιμοποιείς Tor.
 - Ένα ιδιωτικό (incognito) παράθυρο δεν κρύβει τίποτα από τον πάροχο internet· απλώς δεν κρατά ιστορικό στον υπολογιστή.

@@ -14,6 +14,8 @@ The installed orOS uses its own private browser (ungoogled-chromium), works offl
 
 ![ASIO Compatible](https://raw.githubusercontent.com/koulaxizis/oros-bridge/main/asio/logo/asio-compatible-bw.png)
 
+**Tor button:** the installers and the full stick edition have a **Tor** button next to Internet at the top of orOS. The first press downloads the official Tor Browser (about 110 MB) from torproject.org, checks its signature and keeps it in your orOS folder; after that it opens at once in its own window and updates itself. Each orOS user has their own. [Private browsing](https://github.com/koulaxizis/oros-portable/blob/main/PRIVATE-BROWSING.md)
+
 Also from free package managers: `scoop bucket add oros https://github.com/koulaxizis/oros-portable` and `scoop install oros`, or `winget install koulaxizis.orOS` (once the package is listed there). [Code signing policy](https://github.com/koulaxizis/oros-portable#code-signing-policy)
 
 ## Run from a USB stick
@@ -49,6 +51,8 @@ Also from free package managers: `scoop bucket add oros https://github.com/koula
 | **Debian, Ubuntu, Mint** | `oros_<έκδοση>_amd64.deb` | Το ανοίγεις με το κέντρο λογισμικού ή `sudo apt install ./oros_*.deb`. Η καλύτερη επιλογή σε Ubuntu 24.04+. |
 
 Το εγκατεστημένο orOS έχει δικό του ιδιωτικό browser (ungoogled-chromium), δουλεύει χωρίς internet και ενημερώνεται μόνο του: οι νέες εκδόσεις του orOS κατεβαίνουν στο παρασκήνιο και ανοίγουν την επόμενη φορά που θα το ξεκινήσεις (ο εγκαταστάτης των Windows και το AppImage αναβαθμίζονται κι αυτά· το .deb σε ειδοποιεί όταν βγει νέα έκδοση). Τα δεδομένα του μένουν σε αυτόν τον υπολογιστή (`%LOCALAPPDATA%\orOS` ή `~/.local/share/oros`), χωριστά από το useoros.online στον browser σου και από κάθε stick: για να τα μεταφέρεις, χρησιμοποίησε το Dropbox sync του orOS. Τα Windows μπορεί να πουν «Τα Windows προστάτευσαν τον υπολογιστή σας», επειδή ο εγκαταστάτης δεν είναι ακόμα υπογεγραμμένος: «Περισσότερες πληροφορίες» › «Εκτέλεση οπωσδήποτε».
+
+**Κουμπί Tor:** οι εγκαταστάτες και η πλήρης έκδοση για stick έχουν κουμπί **Tor** δίπλα στο Internet, στην πάνω μπάρα του orOS. Το πρώτο πάτημα κατεβάζει το επίσημο Tor Browser (περίπου 110 MB) από το torproject.org, ελέγχει την υπογραφή του και το κρατά στον φάκελο του orOS· μετά ανοίγει αμέσως σε δικό του παράθυρο και ενημερώνεται μόνο του. Κάθε χρήστης του orOS έχει το δικό του. [Ιδιωτική περιήγηση](https://github.com/koulaxizis/oros-portable/blob/main/PRIVATE-BROWSING.md#ιδιωτική-περιήγηση-με-το-oros-portable)
 
 Και από ελεύθερους διαχειριστές πακέτων: `scoop bucket add oros https://github.com/koulaxizis/oros-portable` και `scoop install oros`, ή `winget install koulaxizis.orOS` (μόλις καταχωριστεί εκεί). [Code signing policy](https://github.com/koulaxizis/oros-portable#code-signing-policy)
 
