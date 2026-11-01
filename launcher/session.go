@@ -72,6 +72,8 @@ func runSession(lay layout, url string, extra []string, launch launchFunc) error
 		if !takeSignOut(lay.data) || !loadUsers(lay.data).enabled() {
 			return nil
 		}
+		// The next user must not find this one's Internet window open.
+		closeProfile(filepath.Join(ul.userFolder(), webFolder))
 		log.Printf("users: signed out, showing the sign-in window")
 		url, extra = appURL, nil
 	}
