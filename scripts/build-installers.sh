@@ -29,6 +29,8 @@ stage() { # stage <dest> <os: linux|windows>
   cp -r "$FULL/browser/$os" "$dest/browser/$os"
   if [ -d "$FULL/system" ]; then cp -r "$FULL/system" "$dest/"; fi
   if [ -d "$FULL/ubol" ]; then cp -r "$FULL/ubol" "$dest/"; fi
+  # Tor Browser's signing key (launcher/tor.go)
+  if [ -f "$FULL/tor-browser-developers.gpg" ]; then cp "$FULL/tor-browser-developers.gpg" "$dest/"; fi
   # orOS Bridge for this system only (launcher/bridge.go)
   if [ -d "$FULL/bridge/$os" ]; then mkdir -p "$dest/bridge" && cp -r "$FULL/bridge/$os" "$dest/bridge/$os"; fi
   rm -f "$dest/browser/$os/chromedriver" "$dest/browser/$os/chromedriver.exe"

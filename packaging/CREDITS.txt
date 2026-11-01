@@ -17,6 +17,12 @@ Christos Koulaxizis with the work of many others. Thank you to:
   Internet window of the full edition and the installers (ubol/), GPL-3.0.
   Its licence and source address are inside ubol/ (LICENSE.txt).
   https://github.com/uBlockOrigin/uBOL-home
+- The Tor Project: Tor Browser, which the Tor button of the full edition and
+  the installers downloads from torproject.org on first use (it is not part
+  of this download), checked against the Tor Browser Developers' signing key
+  (tor-browser-developers.gpg). Tor Browser is free software (MPL-2.0, Tor's
+  BSD-3-Clause and others; its licences are inside it).
+  https://www.torproject.org/
 - orOS Bridge (bridge/, full edition and installers): plugins and the sound
   card for orOS Studio, MIT (orOS-Bridge-MIT.txt), with the VST 3 SDK and CLAP
   (MIT), JSON for Modern C++ (MIT) and miniaudio (public domain or MIT-0)
@@ -36,8 +42,15 @@ Christos Koulaxizis with the work of many others. Thank you to:
   fyne.io/systray by the Fyne.io developers and the getlantern/systray
   authors, Apache-2.0 (systray-Apache-2.0.txt); godbus/dbus by the godbus
   authors, BSD-2-Clause (godbus-BSD-2.txt); golang.org/x/sys by the Go
-  Authors, BSD-3-Clause (golang-x-sys-BSD.txt).
+  Authors, BSD-3-Clause (golang-x-sys-BSD.txt). For the Tor button's
+  signature check and unpacking: ProtonMail go-crypto by the Go Authors and
+  Proton AG, BSD-3-Clause (go-crypto-BSD.txt); CIRCL by Cloudflare,
+  BSD-3-Clause (circl-BSD.txt); golang.org/x/crypto by the Go Authors,
+  BSD-3-Clause (golang-x-crypto-BSD.txt); xz by Ulrich Kunitz, BSD-3-Clause
+  (xz-BSD.txt).
   https://github.com/fyne-io/systray https://github.com/godbus/dbus
+  https://github.com/ProtonMail/go-crypto https://github.com/cloudflare/circl
+  https://github.com/ulikunitz/xz
 - Jordan Russell and Martijn Laan: Inno Setup, which makes the Windows setup
   (orOS-Setup-*.exe), under the Inno Setup License.
   https://jrsoftware.org/isinfo.php

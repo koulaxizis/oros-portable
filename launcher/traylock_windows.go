@@ -13,7 +13,13 @@ func lockTray(data string) (func(), bool) {
 	if err := os.MkdirAll(data, 0o755); err != nil {
 		return func() {}, true
 	}
-	f, err := os.OpenFile(filepath.Join(data, "tray.lock"), os.O_CREATE|os.O_RDWR, 0o644)
+	return lockFile(filepath.Join(data, "tray.lock"))
+}
+
+// lockFile takes an exclusive lock on path without waiting (also Tor's
+// locks, tor.go). A file that cannot be opened counts as not locked.
+func lockFile(path string) (func(), bool) {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o644)
 	if err != nil {
 		return func() {}, true
 	}
