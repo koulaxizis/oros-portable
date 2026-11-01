@@ -81,6 +81,7 @@ jobs:
           name: orOS-Portable
           path: |
             out/*.zip
+            out/*.zip.sha256
             out/SOURCES.txt
             out/sticktest/*
             out/src/SHA256SUMS-src.txt
@@ -104,7 +105,7 @@ jobs:
         run: |
           case "$TAG" in v[0-9]*) ;; *) echo "bad tag: $TAG"; exit 1;; esac
           # A draft until the Windows job adds the setup and publishes it.
-          gh release create "$TAG" --draft --target "$GITHUB_SHA" out/*.zip out/SOURCES.txt out/sticktest/* out/src/* \
+          gh release create "$TAG" --draft --target "$GITHUB_SHA" out/*.zip out/*.zip.sha256 out/SOURCES.txt out/sticktest/* out/src/* \
             out/installers/*.AppImage out/installers/*.zsync out/installers/*.deb out/installers/*.sha256 \
             --title "orOS $TAG" --notes-file dist-extra/RELEASE-NOTES.md
 

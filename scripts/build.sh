@@ -168,4 +168,7 @@ ls "$FULL/LICENSES"
 
 echo "== zips"
 (cd "$OUT" && zip -qry "orOS-Portable-$VERSION.zip" orOS-Portable && zip -qry "orOS-Portable-lite-$VERSION.zip" orOS-Portable-lite)
-ls -lh "$OUT"/*.zip
+# A .sha256 beside each zip, like the installers (sha256sum -c checks it).
+(cd "$OUT" && for f in "orOS-Portable-$VERSION.zip" "orOS-Portable-lite-$VERSION.zip"; do sha256sum "$f" > "$f.sha256"; done)
+(cd "$OUT" && sha256sum -c ./*.zip.sha256)
+ls -lh "$OUT"/*.zip "$OUT"/*.zip.sha256
