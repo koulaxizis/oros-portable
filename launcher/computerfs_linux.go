@@ -81,8 +81,9 @@ func (c *computerFS) disks() []rootInfo {
 func (c *computerFS) trashDir(vroot string) (dir, top string) {
 	if vroot == "/home" {
 		d := os.Getenv("XDG_DATA_HOME")
-		if d == "" || !strings.HasPrefix(d, c.home+"/") {
-			d = filepath.Join(c.home, ".local", "share")
+		home := c.homeDir()
+		if d == "" || !strings.HasPrefix(d, home+"/") || home != c.home {
+			d = filepath.Join(home, ".local", "share")
 		}
 		return filepath.Join(d, "Trash"), ""
 	}
@@ -233,8 +234,8 @@ func (c *computerFS) trashItem(vroot, dir, top, id string) (trashItem, error) {
 	}
 	if top != "" && !strings.HasPrefix(orig, "/") {
 		it.From = vroot + "/" + orig
-	} else if orig == c.home || strings.HasPrefix(orig, c.home+"/") {
-		it.From = "/home" + strings.TrimPrefix(orig, c.home)
+	} else if home := c.homeDir(); orig == home || strings.HasPrefix(orig, home+"/") {
+		it.From = "/home" + strings.TrimPrefix(orig, home)
 	}
 	return it, nil
 }

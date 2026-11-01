@@ -474,3 +474,48 @@ func itoa(i int) string {
 	b, _ := json.Marshal(i)
 	return string(b)
 }
+
+func TestUSBHomes(t *testing.T) {
+	home := t.TempDir()
+	data := filepath.Join(home, "oros", "data")
+	c := newAPI(t)
+	c.s.data, c.s.home = data, home
+	must(t, os.MkdirAll(data, 0o755))
+	if userHome(home, data) != home {
+		t.Fatal("one user: the computer's home")
+	}
+	_, out := c.call("add", map[string]any{"name": "Anna/B", "password": "1234", "ownerName": "Chris", "ownerPassword": "owner-pass"})
+	anna := out["id"].(string)
+	owner := loadUsers(data).Users[0].ID
+	if userHome(home, data) != home {
+		t.Fatal("the owner keeps the computer's home")
+	}
+	writeCurrent(data, anna)
+	h := userHome(home, data)
+	if h != filepath.Join(home, "oros", "homes", anna) {
+		t.Fatalf("Anna's home %s", h)
+	}
+	if st, err := os.Stat(filepath.Join(h, "Documents")); err != nil || !st.IsDir() {
+		t.Fatal("usual folders")
+	}
+	must(t, os.WriteFile(filepath.Join(h, "Documents", "essay.txt"), []byte("mine"), 0o600))
+	// Removed: her files land in the owner's home, nothing is lost.
+	writeCurrent(data, owner)
+	if code, _ := c.call("remove", map[string]any{"id": anna, "auth": "owner-pass"}); code != 200 {
+		t.Fatal("remove")
+	}
+	b, err := os.ReadFile(filepath.Join(home, "Anna_B (removed user)", "Documents", "essay.txt"))
+	if err != nil || string(b) != "mine" {
+		t.Fatalf("kept home: %v", err)
+	}
+	// The guest's home goes with the guest's session.
+	c.call("guest", map[string]any{"on": true, "auth": "owner-pass"})
+	clearCurrent(data)
+	c.call("login", map[string]any{"id": guestID})
+	gh := userHome(home, data)
+	must(t, os.WriteFile(filepath.Join(gh, "Documents", "x"), []byte("x"), 0o600))
+	endSession(data)
+	if _, err := os.Stat(gh); err == nil {
+		t.Fatal("guest home kept")
+	}
+}

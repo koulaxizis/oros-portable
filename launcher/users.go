@@ -42,6 +42,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -429,5 +431,55 @@ func wipeGuest(data string) error {
 	if filepath.Base(g) != guestID || filepath.Base(filepath.Dir(g)) != usersFolder {
 		return errors.New("guest folder")
 	}
+	if err := os.RemoveAll(filepath.Join(homesDir(data), guestID)); err != nil {
+		return err
+	}
 	return os.RemoveAll(g)
+}
+
+// homesDir holds the own homes of orOS USB's users (next to data, inside
+// ~/oros, which "This computer" never shows).
+func homesDir(data string) string { return filepath.Join(filepath.Dir(data), "homes") }
+
+// userHome is the folder behind "This computer › Home" on orOS USB: the
+// first user keeps the computer's home; everybody else gets their own,
+// with the usual folders.
+func userHome(home, data string) string {
+	dir := currentUserDir(data)
+	if dir == data {
+		return home
+	}
+	h := filepath.Join(homesDir(data), filepath.Base(dir))
+	for _, d := range []string{"Documents", "Downloads", "Pictures", "Music", "Videos", "Desktop"} {
+		_ = os.MkdirAll(filepath.Join(h, d), 0o700)
+	}
+	return h
+}
+
+// keepHome moves a removed user's home into the first user's home as
+// "<name> (removed user)", so no file is lost with the user.
+func keepHome(home, data string, u *orosUser) {
+	h := filepath.Join(homesDir(data), u.ID)
+	if _, err := os.Stat(h); err != nil || home == "" {
+		return
+	}
+	name := strings.Map(func(r rune) rune {
+		if r == '/' || r == '\\' || r == 0 {
+			return '_'
+		}
+		return r
+	}, u.Name)
+	if strings.HasPrefix(name, ".") {
+		name = "_" + name
+	}
+	to := filepath.Join(home, name+" (removed user)")
+	for i := 2; i < 100; i++ {
+		if _, err := os.Lstat(to); err != nil {
+			break
+		}
+		to = filepath.Join(home, fmt.Sprintf("%s (removed user %d)", name, i))
+	}
+	if err := os.Rename(h, to); err != nil {
+		log.Printf("users: keeping the home of %s: %v", u.ID, err)
+	}
 }

@@ -267,6 +267,9 @@
     const r = await api("state");
     state = r.error ? { users: [] } : r;
     lang = TEXT[saved] ? saved : (TEXT[state.lang] ? state.lang : "en");
+    // orOS USB: closing the window would only bring it back; the System
+    // extension adds Restart and Shut down there.
+    $("close").hidden = !!state.kiosk;
     setText();
     show("pick");
     const first = document.querySelector("#users button");

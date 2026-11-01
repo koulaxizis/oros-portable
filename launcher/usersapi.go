@@ -60,6 +60,9 @@ type usersServer struct {
 	// inUse tells whether a user's folder has a browser open; tests set it.
 	inUse func(dir string) bool
 	now   func() time.Time
+	// home: orOS USB, where users have homes of their own (users.go
+	// userHome); "" elsewhere.
+	home string
 }
 
 var usersAPI = newUsersAPIFromEnv()
@@ -69,7 +72,11 @@ func newUsersAPIFromEnv() *usersServer {
 	if err != nil {
 		return nil
 	}
-	return newUsersServer(newLayout(root).data)
+	s := newUsersServer(newLayout(root).data)
+	if os.Getenv("OROS_COMPUTER_FILES") == "1" {
+		s.home, _ = os.UserHomeDir()
+	}
+	return s
 }
 
 func newUsersServer(data string) *usersServer {
@@ -260,6 +267,7 @@ func (s *usersServer) state() map[string]any {
 		"lang":     systemLang(),
 		"canAdd":   isOwner && len(l.Users) < maxUsers,
 		"recovery": l.Recovery != nil,
+		"kiosk":    os.Getenv("OROS_COMPUTER_FILES") == "1", // orOS USB: no "Close" on the sign-in window
 	}
 }
 
@@ -546,6 +554,9 @@ func (s *usersServer) remove(q usersReq) (map[string]any, int) {
 	}
 	if err := os.RemoveAll(dir); err != nil {
 		log.Printf("users: removing %s: %v", u.ID, err)
+	}
+	if s.home != "" {
+		keepHome(s.home, s.data, u)
 	}
 	log.Printf("users: removed %s", u.ID)
 	return uDone(nil)
