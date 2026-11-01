@@ -107,7 +107,7 @@ Window placement (`launcher/window.go`): the main orOS window opens maximised an
 
 ## Building
 
-`scripts/build.sh <version>` builds both editions into `out/`, `scripts/build-sticktest.sh` the stick test, and `scripts/fetch-sources.sh` collects the source archives for a release. CI (`.github/workflows/build.yml`) runs the Go tests on every push and PR, uploads the zips as a workflow artifact on `main`, and publishes a GitHub release for `v*` tags.
+`scripts/build.sh <version>` builds both editions into `out/`, `scripts/build-sticktest.sh` the stick test, and `scripts/fetch-sources.sh` collects the source archives for a release. CI (`.github/workflows/build.yml`) runs the Go tests on every push and PR, uploads the zips as a workflow artifact on `main`, and publishes a GitHub release for `v*` tags. Every download in a release has a `.sha256` beside it (`orOS-Portable-<version>.zip.sha256`, `orOS-Portable-lite-<version>.zip.sha256`, and the same for the setup, AppImage and .deb): `sha256sum -c orOS-Portable-<version>.zip.sha256` on Linux, or compare `Get-FileHash orOS-Portable-<version>.zip` with the file on Windows.
 
 ## Making sticks
 
@@ -118,6 +118,7 @@ archives, so copies sold on sticks meet the source terms of the GPL/LGPL
 parts inside ungoogled-chromium.
 
 - `sudo scripts/make-sticks.sh orOS-Portable-<version>.zip /dev/sdb /dev/sdc ...`
+  first checks the zip against the `.sha256` beside it (when there is one),
   erases each stick, makes one NTFS partition named `OROS`, copies the full
   edition, then re-reads every file from the stick and checks it against
   `SHA256SUMS.txt`. It writes all sticks in parallel (a powered USB hub helps)

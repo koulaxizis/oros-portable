@@ -34,6 +34,8 @@ Also from free package managers: `scoop bucket add oros https://github.com/koula
 
 `orOS-sticktest-*`: optional speed test. Copy it onto a stick and run it there to see whether the stick is fast enough. Files ending in `-src` and `SOURCES.txt`: the source code of everything in this release.
 
+**Check your download:** every file has a `.sha256` beside it with its checksum. Linux: `sha256sum -c orOS-Portable-<version>.zip.sha256` in the download folder. Windows: in PowerShell, `Get-FileHash orOS-Portable-<version>.zip` must show the same code as the `.sha256` file (open it with Notepad).
+
 ---
 
 Εγκαθιστάς το [orOS](https://useoros.online) σε οποιονδήποτε υπολογιστή με Windows ή Linux, ή το τρέχεις από USB stick, με ή χωρίς internet. Δωρεάν για πάντα, MIT.
@@ -67,3 +69,5 @@ Also from free package managers: `scoop bucket add oros https://github.com/koula
 **Μέγεθος stick:** προτείνονται 32 GB ή περισσότερα (τα 64 GB είναι ιδανικά και συνήθως ταχύτερα)· ελάχιστο 8 GB. Κάνε format το stick σε **NTFS** (σε Linux, το exFAT και το FAT32 δεν μπορούν να κρατήσουν τα δεδομένα του browser), αποσυμπίεσε και αντέγραψε ό,τι είναι μέσα στον φάκελο `orOS-Portable` στο stick. Μετά διπλό κλικ στο `orOS.exe` (Windows) ή `./orOS` (Linux).
 
 `orOS-sticktest-*`: προαιρετικό τεστ ταχύτητας. Το αντιγράφεις στο stick και το τρέχεις από εκεί για να δεις αν το stick είναι αρκετά γρήγορο. Αρχεία που τελειώνουν σε `-src` και `SOURCES.txt`: ο πηγαίος κώδικας όλων όσων περιέχει το release.
+
+**Έλεγξε τη λήψη σου:** κάθε αρχείο έχει δίπλα του ένα `.sha256` με το checksum του. Linux: `sha256sum -c orOS-Portable-<έκδοση>.zip.sha256` στον φάκελο λήψεων. Windows: στο PowerShell, το `Get-FileHash orOS-Portable-<έκδοση>.zip` πρέπει να δείχνει τον ίδιο κωδικό με το αρχείο `.sha256` (άνοιξέ το με το Σημειωματάριο).

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Tests make-sticks.sh on two loop devices with a fake orOS Portable folder:
-# both must be written and verified, and a flipped byte must be caught.
+# both must be written and verified, and a flipped byte must be caught, and
+# a zip that does not match its .sha256 is refused.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 T="$(mktemp -d)"
@@ -17,7 +18,7 @@ echo exe > "$T/orOS-Portable/orOS.exe"
 printf '#!/bin/sh\n' > "$T/orOS-Portable/orOS"
 head -c 3000000 /dev/urandom > "$T/orOS-Portable/app/apps/big.bin"
 echo "Ελληνικά" > "$T/orOS-Portable/app/Σημειώσεις.txt"
-(cd "$T" && zip -qr portable.zip orOS-Portable)
+(cd "$T" && zip -qr portable.zip orOS-Portable && sha256sum portable.zip > portable.zip.sha256)
 
 for i in 1 2; do
   truncate -s 128M "$T/disk$i.img"
@@ -37,6 +38,14 @@ if (cd "$T/m" && sha256sum --quiet -c SHA256SUMS.txt) >/dev/null 2>&1; then
   echo "tampering not detected"; exit 1
 fi
 umount "$T/m"
+
+# Refuses a zip that does not match the .sha256 beside it.
+echo "0000000000000000000000000000000000000000000000000000000000000000  portable.zip" > "$T/portable.zip.sha256"
+if out="$(OROS_STICKS_ALLOW_ANY=1 "$ROOT/scripts/make-sticks.sh" --yes "$T/portable.zip" "${DEVS[1]}" 2>&1)"; then
+  echo "damaged zip accepted"; exit 1
+fi
+echo "$out" | grep -q "does not match" || { echo "wrong refusal: $out"; exit 1; }
+rm "$T/portable.zip.sha256"
 
 # Refuses a non-USB disk without the test override.
 if "$ROOT/scripts/make-sticks.sh" --yes "$T/portable.zip" "${DEVS[1]}" >/dev/null 2>&1; then
