@@ -79,14 +79,35 @@ func runSession(lay layout, url string, extra []string, launch launchFunc) error
 	}
 }
 
-// endSession forgets who was signed in and empties the guest's folder.
+// endSession forgets who was signed in, empties the guest's folder and
+// locks an encrypted user's files (vault.go).
 func endSession(data string) {
 	if c, ok := readCurrent(data); ok && c.ID == guestID {
 		if err := wipeGuest(data); err != nil {
 			log.Printf("users: guest folder: %v", err)
 		}
+	} else if ok {
+		lockVault(data, c.ID)
 	}
 	clearCurrent(data)
+}
+
+// lockAllVaults locks every encrypted user's files; tests replace it.
+var lockAllVaults = func(data string) {
+	if usersAPI != nil && usersAPI.data == data {
+		for _, u := range loadUsers(data).Users {
+			if u.encrypted() {
+				usersAPI.vaultLock(u.ID)
+			}
+		}
+	}
+}
+
+// lockVault locks a user's encrypted files; tests replace it.
+var lockVault = func(data, id string) {
+	if usersAPI != nil && usersAPI.data == data {
+		usersAPI.vaultLock(id)
+	}
 }
 
 // signIn returns the layout of the user whose orOS opens. joined: that
@@ -107,6 +128,10 @@ func signIn(lay layout) (layout, bool, bool) {
 		}
 		return lay, false, false
 	}
+	// Nobody is signed in: an encrypted user's folder left open by a
+	// session that ended without its sign-out (a crash, the watchdog) is
+	// locked before anyone else signs in.
+	lockAllVaults(lay.data)
 	clearCurrent(lay.data)
 	takeSignOut(lay.data) // a sign-out that never closed its window
 	start := time.Now().UnixMilli()

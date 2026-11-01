@@ -29,8 +29,9 @@ package main
 // rounds, 16-byte random salt. After 5 wrong tries each try waits (30 s,
 // doubling, at most 15 minutes). The owner gets a recovery code when
 // their password is first set; it sets a new password from the sign-in
-// window. Honest limit (until U4): the password keeps people away from
-// the screen, the folders on the stick are not encrypted by it.
+// window. Honest limit: the password keeps people away from the screen;
+// the folders on the stick are encrypted only for users who turn on
+// encryption on orOS USB (vault.go).
 
 import (
 	"crypto/hmac"
@@ -91,6 +92,8 @@ type orosUser struct {
 	Fails   int       `json:"fails,omitempty"`
 	Until   int64     `json:"until,omitempty"` // unix ms: no try before this
 	Created int64     `json:"created,omitempty"`
+	// Vault: the user's files are encrypted on orOS USB (vault.go).
+	Vault *vaultInfo `json:"vault,omitempty"`
 }
 
 // userList is users.json.
@@ -285,6 +288,9 @@ func loadUsers(data string) *userList {
 		}
 		if u.Dir != "" && u.Dir != usersFolder+"/"+u.ID {
 			continue
+		}
+		if u.Dir == "" {
+			u.Vault = nil // the first user keeps the data folder: never a vault
 		}
 		keep = append(keep, u)
 	}
