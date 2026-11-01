@@ -468,3 +468,46 @@ func TestReportZipWithOrosPart(t *testing.T) {
 		t.Fatalf("oros.txt: %q", web)
 	}
 }
+
+// uBlock Origin Lite from a read-only program folder (AppImage, .deb)
+// runs from a copy in the data folder: Chromium writes its indexed rules
+// into the extension's folder.
+func TestWritableExt(t *testing.T) {
+	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
+		t.Skip("needs a folder this user cannot write")
+	}
+	lay := portableLayout(t)
+	ubol := filepath.Join(lay.root, ubolDir)
+	must(t, os.MkdirAll(filepath.Join(ubol, "rulesets"), 0o755))
+	must(t, os.WriteFile(filepath.Join(ubol, "manifest.json"), []byte(`{"v":1}`), 0o644))
+	must(t, os.WriteFile(filepath.Join(ubol, "rulesets", "a.json"), []byte("[]"), 0o644))
+	if got := writableExt(lay, ubol); got != ubol {
+		t.Fatalf("a writable folder is used as it is: %s", got)
+	}
+	must(t, os.Chmod(filepath.Join(ubol, "rulesets"), 0o555))
+	must(t, os.Chmod(ubol, 0o555))
+	t.Cleanup(func() { os.Chmod(ubol, 0o755); os.Chmod(filepath.Join(ubol, "rulesets"), 0o755) })
+	want := filepath.Join(lay.data, ubolDir)
+	if got := writableExt(lay, ubol); got != want {
+		t.Fatalf("copy: %s", got)
+	}
+	if b, err := os.ReadFile(filepath.Join(want, "rulesets", "a.json")); err != nil || string(b) != "[]" {
+		t.Fatalf("copied file: %q %v", b, err)
+	}
+	must(t, os.WriteFile(filepath.Join(want, "rulesets", "_indexed"), []byte("x"), 0o644))
+	if writableExt(lay, ubol) != want {
+		t.Fatal("same version")
+	}
+	if _, err := os.Stat(filepath.Join(want, "rulesets", "_indexed")); err != nil {
+		t.Fatal("the same version is not copied again")
+	}
+	os.Chmod(ubol, 0o755)
+	must(t, os.WriteFile(filepath.Join(ubol, "manifest.json"), []byte(`{"v":2}`), 0o644))
+	os.Chmod(ubol, 0o555)
+	if writableExt(lay, ubol) != want {
+		t.Fatal("new version")
+	}
+	if b, _ := os.ReadFile(filepath.Join(want, "manifest.json")); string(b) != `{"v":2}` {
+		t.Fatalf("a new version is copied again: %s", b)
+	}
+}

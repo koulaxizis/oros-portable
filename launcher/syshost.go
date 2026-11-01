@@ -21,6 +21,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -69,11 +70,57 @@ func bundledExtensions(lay layout) []string {
 	var out []string
 	for _, name := range []string{sysExtFolder, addonDir, ubolDir} {
 		d := filepath.Join(lay.root, name)
-		if _, err := os.Stat(filepath.Join(d, "manifest.json")); err == nil {
-			out = append(out, d)
+		if _, err := os.Stat(filepath.Join(d, "manifest.json")); err != nil {
+			continue
 		}
+		if name == ubolDir {
+			if d = writableExt(lay, d); d == "" {
+				continue
+			}
+		}
+		out = append(out, d)
 	}
 	return out
+}
+
+// writableExt: Chromium writes an unpacked extension's indexed filter
+// rules (uBlock Origin Lite's) into the extension's own folder and refuses
+// to load it from a read-only one, with a dialog over orOS. The stick and
+// the Windows setup keep it writable; the AppImage and the .deb do not,
+// so there it runs from a copy in the data folder, made again when the
+// program brings another manifest. "" when no copy can be made.
+func writableExt(lay layout, dir string) string {
+	probe := filepath.Join(dir, ".oros-write-test")
+	if f, err := os.OpenFile(probe, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644); err == nil {
+		f.Close()
+		os.Remove(probe)
+		return dir
+	}
+	copyDir := filepath.Join(lay.data, filepath.Base(dir))
+	want, err := os.ReadFile(filepath.Join(dir, "manifest.json"))
+	if err != nil {
+		return ""
+	}
+	if have, err := os.ReadFile(filepath.Join(copyDir, "manifest.json")); err == nil && bytes.Equal(have, want) {
+		return copyDir
+	}
+	tmp := copyDir + ".new"
+	os.RemoveAll(tmp)
+	if err := os.MkdirAll(lay.data, 0o755); err != nil {
+		log.Printf("extension copy %s: %v", dir, err)
+		return ""
+	}
+	if err := copyTree(dir, tmp, false); err != nil {
+		log.Printf("extension copy %s: %v", dir, err)
+		os.RemoveAll(tmp)
+		return ""
+	}
+	os.RemoveAll(copyDir)
+	if err := os.Rename(tmp, copyDir); err != nil {
+		log.Printf("extension copy %s: %v", dir, err)
+		return ""
+	}
+	return copyDir
 }
 
 // joinExtensions merges every --load-extension flag into the first one:
