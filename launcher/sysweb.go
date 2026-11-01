@@ -33,7 +33,7 @@ func webBrowser(lay layout) string {
 
 func webArgs(lay layout) []string {
 	args := []string{
-		"--user-data-dir=" + filepath.Join(lay.data, webFolder),
+		"--user-data-dir=" + filepath.Join(lay.userFolder(), webFolder),
 		"--no-first-run",
 		"--no-default-browser-check",
 		"--disable-features=Translate",
@@ -54,7 +54,7 @@ func openWeb(lay layout) sysReply {
 	if b == "" {
 		return sysFail(errors.New("this edition has no browser of its own"))
 	}
-	if err := os.MkdirAll(filepath.Join(lay.data, webFolder), 0o700); err != nil {
+	if err := os.MkdirAll(filepath.Join(lay.userFolder(), webFolder), 0o700); err != nil {
 		return sysFail(err)
 	}
 	if err := webStart(b, webArgs(lay)...); err != nil {

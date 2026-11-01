@@ -90,6 +90,9 @@ type computerFS struct {
 	// private are real folders that are never listed or reachable.
 	consent *fsConsent
 	private []string
+	// homes: orOS USB with users (users.go) gives each user a home of
+	// their own; nil keeps home for everybody.
+	homes func() string
 
 	mu     sync.Mutex
 	writes map[string]int // active writes per disk, so a disk is not taken away mid-write
@@ -120,6 +123,7 @@ func newComputerFSFromEnv() *computerFS {
 		}
 		c := newComputerFS(home, media, os.Getenv("OROS_FS_HELPER"))
 		c.consent = newFSConsent(lay, true)
+		c.homes = func() string { return userHome(home, lay.data) }
 		return c
 	}
 	exe, err := os.Executable()
@@ -159,6 +163,14 @@ func (c *computerFS) isPrivate(real string) bool {
 }
 
 func (c *computerFS) on() bool { return c.consent == nil || c.consent.on() }
+
+// homeDir is the folder behind "/home": the signed-in user's own.
+func (c *computerFS) homeDir() string {
+	if c.homes != nil {
+		return c.homes()
+	}
+	return c.home
+}
 
 func newComputerFS(home, media, helper string) *computerFS {
 	b := make([]byte, 32)
@@ -272,7 +284,7 @@ func (c *computerFS) resolve(v string) (place, error) {
 	var rest []string
 	switch segs[0] {
 	case "home":
-		p.root, p.vroot, rest = c.home, "/home", segs[1:]
+		p.root, p.vroot, rest = c.homeDir(), "/home", segs[1:]
 		if len(rest) > 0 && rest[0] == "oros" {
 			return place{}, errHidden
 		}
@@ -660,7 +672,7 @@ func (c *computerFS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	switch {
 	case name == "roots" && r.Method == http.MethodGet:
-		home := c.rootInfo("/home", "home", c.home)
+		home := c.rootInfo("/home", "home", c.homeDir())
 		// os tells orOS Files which Trash this is (Windows: the Recycle Bin).
 		writeJSON(w, 200, map[string]any{"home": home, "disks": c.disks(), "os": runtime.GOOS})
 	case name == "list" && r.Method == http.MethodGet:

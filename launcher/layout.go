@@ -21,17 +21,34 @@ const installedMarker = "installed"
 // go to the user's own data folder.
 type layout struct {
 	root      string // launcher folder: browser/ and the app/ it came with
-	data      string // browser profiles and launcher.log
+	data      string // launcher.log, users.json and the first user's browser profiles
+	user      string // the signed-in user's folder: profiles, web, session.json (users.go)
 	updates   string // folder whose app/ the update command replaces
 	installed bool
 }
 
 func newLayout(root string) layout {
 	if _, err := os.Stat(filepath.Join(root, installedMarker)); err != nil {
-		return layout{root: root, data: filepath.Join(root, "data"), updates: root}
+		d := filepath.Join(root, "data")
+		return layout{root: root, data: d, user: currentUserDir(d), updates: root}
 	}
 	d := userDataDir()
-	return layout{root: root, data: d, updates: d, installed: true}
+	return layout{root: root, data: d, user: currentUserDir(d), updates: d, installed: true}
+}
+
+// forUser is the same layout with another user's folder.
+func (l layout) forUser(dir string) layout {
+	l.user = dir
+	return l
+}
+
+// userFolder is the user's folder (the data folder when a test's layout
+// left it empty).
+func (l layout) userFolder() string {
+	if l.user == "" {
+		return l.data
+	}
+	return l.user
 }
 
 // userDataDir is %LOCALAPPDATA%\orOS on Windows and ~/.local/share/oros
