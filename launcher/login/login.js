@@ -17,6 +17,10 @@
       pwDiffer: "The two passwords differ.", codeTitle: "Your new recovery code",
       codeHelp: "Write it down and keep it somewhere safe. It is the only way back in if the owner's password is forgotten. The old code no longer works.",
       codeOk: "I wrote it down", opening: "Opening orOS…", close: "Close", none: "There are no users here yet.",
+      recHelpVault: "Your files are encrypted. Type the recovery code you got when you turned encryption on. It sets a new password; your files stay as they are.",
+      codeHelpVault: "Write it down and keep it somewhere safe. Your files are encrypted: without your password or this code nobody can open them, not even the owner. The old code no longer works.",
+      sealing: "Encrypting your files…", unsealing: "Opening your encrypted files…", unsealingOff: "Turning encryption off…",
+      longNote: "This can take a few minutes. Keep the computer on.", vaultFail: "Your encrypted files could not be opened.",
     },
     el: {
       who: "Ποιος χρησιμοποιεί το orOS;", password: "Κωδικός ή PIN", show: "Εμφάνιση", hide: "Απόκρυψη", signIn: "Είσοδος",
@@ -29,6 +33,10 @@
       pwDiffer: "Οι δύο κωδικοί διαφέρουν.", codeTitle: "Ο νέος κωδικός ανάκτησης",
       codeHelp: "Σημειώστε τον και φυλάξτε τον κάπου ασφαλές. Είναι ο μόνος τρόπος να μπείτε αν ξεχαστεί ο κωδικός του κατόχου. Ο παλιός κωδικός δεν ισχύει πια.",
       codeOk: "Τον σημείωσα", opening: "Άνοιγμα του orOS…", close: "Κλείσιμο", none: "Δεν υπάρχουν ακόμα χρήστες εδώ.",
+      recHelpVault: "Τα αρχεία σας είναι κρυπτογραφημένα. Γράψτε τον κωδικό ανάκτησης που πήρατε όταν ενεργοποιήσατε την κρυπτογράφηση. Με αυτόν ορίζεται νέος κωδικός· τα αρχεία σας μένουν όπως είναι.",
+      codeHelpVault: "Σημειώστε τον και φυλάξτε τον κάπου ασφαλές. Τα αρχεία σας είναι κρυπτογραφημένα: χωρίς τον κωδικό σας ή αυτόν τον κωδικό δεν τα ανοίγει κανείς, ούτε ο κάτοχος. Ο παλιός κωδικός δεν ισχύει πια.",
+      sealing: "Κρυπτογράφηση των αρχείων σας…", unsealing: "Άνοιγμα των κρυπτογραφημένων αρχείων σας…", unsealingOff: "Απενεργοποίηση της κρυπτογράφησης…",
+      longNote: "Μπορεί να πάρει μερικά λεπτά. Μην κλείσετε τον υπολογιστή.", vaultFail: "Δεν ήταν δυνατό να ανοίξουν τα κρυπτογραφημένα αρχεία σας.",
     },
     de: {
       who: "Wer benutzt orOS?", password: "Passwort oder PIN", show: "Anzeigen", hide: "Verbergen", signIn: "Anmelden",
@@ -41,6 +49,10 @@
       pwDiffer: "Die beiden Passwörter sind verschieden.", codeTitle: "Dein neuer Wiederherstellungscode",
       codeHelp: "Schreib ihn auf und bewahre ihn sicher auf. Nur mit ihm kommst du wieder hinein, wenn das Passwort des Besitzers vergessen ist. Der alte Code gilt nicht mehr.",
       codeOk: "Ich habe ihn notiert", opening: "orOS wird geöffnet…", close: "Schließen", none: "Hier gibt es noch keine Benutzer.",
+      recHelpVault: "Deine Dateien sind verschlüsselt. Gib den Wiederherstellungscode ein, den du beim Einschalten der Verschlüsselung bekommen hast. Er setzt ein neues Passwort; deine Dateien bleiben, wie sie sind.",
+      codeHelpVault: "Schreib ihn auf und bewahre ihn sicher auf. Deine Dateien sind verschlüsselt: Ohne dein Passwort oder diesen Code kann sie niemand öffnen, auch nicht der Besitzer. Der alte Code gilt nicht mehr.",
+      sealing: "Deine Dateien werden verschlüsselt…", unsealing: "Deine verschlüsselten Dateien werden geöffnet…", unsealingOff: "Verschlüsselung wird ausgeschaltet…",
+      longNote: "Das kann einige Minuten dauern. Lass den Computer eingeschaltet.", vaultFail: "Deine verschlüsselten Dateien konnten nicht geöffnet werden.",
     },
   };
 
@@ -156,13 +168,17 @@
     $("pw").value = "";
     $("pw").type = "password";
     $("pw-show").textContent = t("show");
-    $("pass-forgot").hidden = !(u.owner && state.recovery);
+    $("pass-forgot").hidden = !((u.owner && state.recovery) || isVault(u));
     message("pass-msg", "");
     show("pass");
     if (u.wait) waitMessage("pass-msg", u.wait);
   }
 
   function message(id, s) { $(id).textContent = s; }
+
+  // An encrypted user: only their password or their own recovery code
+  // opens their files (launcher/vault.go).
+  const isVault = (u) => !!u && (u.vault === "on" || u.vault === "off-pending");
 
   function waitMessage(id, ms) {
     clearInterval(waitTimer);
@@ -180,12 +196,14 @@
 
   function answerError(id, r) {
     if (r.wait) return waitMessage(id, r.wait);
-    const k = { wrong: id === "rec-msg" ? "recWrong" : "wrong", busy: "busy", password: "pwShort" }[r.error] || "error";
+    const k = { wrong: id === "rec-msg" ? "recWrong" : "wrong", busy: "busy", password: "pwShort", vault: "vaultFail" }[r.error] || "error";
     message(id, t(k));
   }
 
   // ---------- Sign in ----------
   function opened() {
+    $("t-opening").textContent = t("opening");
+    $("opening-note").textContent = "";
     show("opening");
     // The launcher closes this window once it sees the sign-in; closing
     // it here as well is quicker where the browser allows it.
@@ -210,9 +228,20 @@
     if (!chosen || $("pass-go").disabled) return;
     $("pass-go").disabled = true;
     message("pass-msg", "");
+    // Encrypting or opening encrypted files takes a moment (a few minutes
+    // the first time): say so while the sign-in waits.
+    const v = chosen.vault;
+    const slow = setTimeout(() => {
+      const k = v === "pending" ? "sealing" : v === "off-pending" ? "unsealingOff" : isVault(chosen) ? "unsealing" : "opening";
+      $("t-opening").textContent = t(k);
+      $("opening-note").textContent = k === "sealing" || k === "unsealingOff" ? t("longNote") : "";
+      show("opening");
+    }, 700);
     const r = await api("login", { id: chosen.id, password: $("pw").value });
+    clearTimeout(slow);
     $("pass-go").disabled = false;
     if (r.ok) return opened();
+    show("pass");
     $("pw").select();
     answerError("pass-msg", r);
   });
@@ -227,6 +256,7 @@
   $("pass-forgot").addEventListener("click", () => {
     for (const id of ["rec-code", "rec-pw", "rec-pw2"]) $(id).value = "";
     message("rec-msg", "");
+    $("t-rec-help").textContent = t(isVault(chosen) ? "recHelpVault" : "recHelp");
     show("rec");
   });
 
@@ -240,9 +270,10 @@
     if (!validPassword(pw)) return message("rec-msg", t("pwShort"));
     if (pw !== $("rec-pw2").value) return message("rec-msg", t("pwDiffer"));
     $("rec-go").disabled = true;
-    const r = await api("recover", { code: $("rec-code").value, password: pw });
+    const r = await api("recover", { id: chosen ? chosen.id : "", code: $("rec-code").value, password: pw });
     $("rec-go").disabled = false;
     if (!r.ok) return answerError("rec-msg", r);
+    $("t-code-help").textContent = t(isVault(chosen) ? "codeHelpVault" : "codeHelp");
     $("code-value").textContent = String(r.code || "");
     show("code");
   });

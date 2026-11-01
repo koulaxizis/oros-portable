@@ -17,7 +17,7 @@ package main
 //
 //	GET  state     {enabled, me, users[], guest, max, lang, canAdd}
 //	POST login     {id, password}          the sign-in window
-//	POST recover   {code, password}        the owner, with the recovery code
+//	POST recover   {id?, code, password}   the owner, or an encrypted user, with their recovery code
 //	POST signout   {}                      back to the sign-in window
 //	POST add       {name, password, auth | ownerName + ownerPassword}
 //	POST remove    {id, auth}
@@ -25,10 +25,13 @@ package main
 //	POST rename    {id, name}
 //	POST owner     {id, auth}
 //	POST guest     {on, auth}
+//	POST vault     {on, password}          encrypt my files (orOS USB), or stop
 //	GET  sizes     {id: bytes}
 //
 // Errors are {"error": code}: denied, bad, name, taken, password, wrong
-// (with "wait" in ms when tries must wait), wait, full, busy, self, first.
+// (with "wait" in ms when tries must wait), wait, full, busy, self, first,
+// vault (an encrypted user's files could not be opened, or the owner tried
+// to reset an encrypted user's password), novault (not on this system).
 
 import (
 	"embed"
@@ -63,6 +66,8 @@ type usersServer struct {
 	// home: orOS USB, where users have homes of their own (users.go
 	// userHome); "" elsewhere.
 	home string
+	// vfs: encrypted users (vault.go), orOS USB only; nil elsewhere.
+	vfs vaultFS
 }
 
 var usersAPI = newUsersAPIFromEnv()
@@ -75,6 +80,7 @@ func newUsersAPIFromEnv() *usersServer {
 	s := newUsersServer(newLayout(root).data)
 	if os.Getenv("OROS_COMPUTER_FILES") == "1" {
 		s.home, _ = os.UserHomeDir()
+		s.vfs = newSysVault(os.Getenv("OROS_FS_HELPER"))
 	}
 	return s
 }
@@ -128,6 +134,18 @@ type publicUser struct {
 	Password bool   `json:"password"`
 	Wait     int64  `json:"wait,omitempty"` // ms until the next try
 	Active   bool   `json:"active,omitempty"`
+	// Vault: "pending", "on", "off-pending", "failed" (vault.go); VaultError
+	// says why turning on failed (space, copy).
+	Vault      string `json:"vault,omitempty"`
+	VaultError string `json:"vaultError,omitempty"`
+}
+
+func newPublicUser(u *orosUser) publicUser {
+	p := publicUser{ID: u.ID, Name: u.Name, Owner: u.Owner, First: u.Dir == "", Password: u.Pass != nil}
+	if u.Vault != nil {
+		p.Vault, p.VaultError = u.Vault.State, u.Vault.Error
+	}
+	return p
 }
 
 type usersReq struct {
@@ -194,6 +212,8 @@ func (s *usersServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		out, code = s.setOwner(q)
 	case "guest":
 		out, code = s.setGuest(q)
+	case "vault":
+		out, code = s.setVault(q)
 	default:
 		http.NotFound(w, r)
 		return
@@ -237,7 +257,7 @@ func (s *usersServer) state() map[string]any {
 	now := s.now().UnixMilli()
 	users := []publicUser{}
 	for _, u := range l.Users {
-		p := publicUser{ID: u.ID, Name: u.Name, Owner: u.Owner, First: u.Dir == "", Password: u.Pass != nil}
+		p := newPublicUser(u)
 		if u.Until > now {
 			p.Wait = u.Until - now
 		}
@@ -248,7 +268,7 @@ func (s *usersServer) state() map[string]any {
 	if s.guestSignedIn(l) {
 		me = publicUser{ID: guestID, Guest: true}
 	} else if u := s.me(l); u != nil {
-		me = publicUser{ID: u.ID, Name: u.Name, Owner: u.Owner, First: u.Dir == "", Password: u.Pass != nil}
+		me = newPublicUser(u)
 	}
 	isOwner := false
 	if u, ok := me.(publicUser); ok && u.Owner {
@@ -268,6 +288,7 @@ func (s *usersServer) state() map[string]any {
 		"canAdd":   isOwner && len(l.Users) < maxUsers,
 		"recovery": l.Recovery != nil,
 		"kiosk":    os.Getenv("OROS_COMPUTER_FILES") == "1", // orOS USB: no "Close" on the sign-in window
+		"vault":    s.vfs != nil,                            // users may encrypt their files
 	}
 }
 
@@ -358,6 +379,10 @@ func (s *usersServer) login(q usersReq) (map[string]any, int) {
 	if out, code := s.tryPassword(l, u, q.Password); out != nil {
 		return out, code
 	}
+	if err := s.vaultSignIn(l, u, q.Password); err != nil {
+		log.Printf("users: opening the files of %s: %v", u.ID, err)
+		return uFail("vault", 500)
+	}
 	if err := writeCurrent(s.data, u.ID); err != nil {
 		return uFail("busy", 500)
 	}
@@ -367,21 +392,43 @@ func (s *usersServer) login(q usersReq) (map[string]any, int) {
 
 func (s *usersServer) recover(q usersReq) (map[string]any, int) {
 	l := loadUsers(s.data)
-	o := l.owner()
-	if !l.enabled() || o == nil || l.Recovery == nil || s.someoneActive(l) {
+	if !l.enabled() || s.someoneActive(l) {
+		return uFail("denied", 403)
+	}
+	u := l.owner()
+	if q.ID != "" {
+		u = l.find(q.ID)
+	}
+	if u == nil {
+		return uFail("denied", 403)
+	}
+	// The owner: the code of users.json. An encrypted user: their own code,
+	// which opens their key (vault.go).
+	vault := u.encrypted()
+	if !vault && (!u.Owner || l.Recovery == nil) {
 		return uFail("denied", 403)
 	}
 	if !validPassword(q.Password) {
 		return uFail("password", 400)
 	}
 	now := s.now()
-	if o.Until > now.UnixMilli() {
-		return map[string]any{"error": "wait", "wait": o.Until - now.UnixMilli()}, 429
+	if u.Until > now.UnixMilli() {
+		return map[string]any{"error": "wait", "wait": u.Until - now.UnixMilli()}, 429
 	}
-	if !checkPassword(l.Recovery, normCode(q.Code)) {
-		o.Fails++
-		if d := waitFor(o.Fails); d > 0 {
-			o.Until = now.Add(d).UnixMilli()
+	var key []byte
+	ok := false
+	if vault {
+		var err error
+		key, err = u.Vault.keyFromCode(q.Code)
+		ok = err == nil
+		defer clear(key)
+	} else {
+		ok = checkPassword(l.Recovery, normCode(q.Code))
+	}
+	if !ok {
+		u.Fails++
+		if d := waitFor(u.Fails); d > 0 {
+			u.Until = now.Add(d).UnixMilli()
 		}
 		_ = saveUsers(s.data, l)
 		return uFail("wrong", 403)
@@ -390,15 +437,23 @@ func (s *usersServer) recover(q usersReq) (map[string]any, int) {
 	if err != nil {
 		return uFail("busy", 500)
 	}
-	code, rh, err := newRecovery()
-	if err != nil {
-		return uFail("busy", 500)
+	var code string
+	if vault {
+		if code, err = u.Vault.reseal(key, q.Password, true); err != nil {
+			return uFail("busy", 500)
+		}
+	} else {
+		var rh *passHash
+		if code, rh, err = newRecovery(); err != nil {
+			return uFail("busy", 500)
+		}
+		l.Recovery = rh
 	}
-	o.Pass, o.Fails, o.Until, l.Recovery = h, 0, 0, rh
+	u.Pass, u.Fails, u.Until = h, 0, 0
 	if err := saveUsers(s.data, l); err != nil {
 		return uFail("busy", 500)
 	}
-	log.Printf("users: owner password set with the recovery code")
+	log.Printf("users: password of %s set with the recovery code", u.ID)
 	return uDone(map[string]any{"code": code})
 }
 
@@ -552,10 +607,15 @@ func (s *usersServer) remove(q usersReq) (map[string]any, int) {
 	if err := saveUsers(s.data, l); err != nil {
 		return uFail("busy", 500)
 	}
+	if u.Vault != nil && u.Vault.State != vaultFailed && s.vfs != nil {
+		// Encrypted: nobody else can read those files, so they go with
+		// the user (Settings says so before).
+		s.vaultRemove(u)
+	}
 	if err := os.RemoveAll(dir); err != nil {
 		log.Printf("users: removing %s: %v", u.ID, err)
 	}
-	if s.home != "" {
+	if s.home != "" && !isLink(filepath.Join(homesDir(s.data), u.ID)) {
 		keepHome(s.home, s.data, u)
 	}
 	log.Printf("users: removed %s", u.ID)
@@ -580,6 +640,10 @@ func (s *usersServer) password(q usersReq) (map[string]any, int) {
 			return out, code
 		}
 	} else {
+		if u.Vault != nil && u.Vault.State != vaultFailed {
+			// Only their password or recovery code opens their key.
+			return uFail("vault", 409)
+		}
 		if _, out, code := s.ownerAuth(l, q.Auth); out != nil {
 			return out, code
 		}
@@ -588,6 +652,17 @@ func (s *usersServer) password(q usersReq) (map[string]any, int) {
 	h, err := hashPassword(q.Password)
 	if err != nil {
 		return uFail("busy", 500)
+	}
+	if u.Vault != nil && u.Vault.State != vaultFailed {
+		key, err := u.Vault.key(q.Old)
+		if err != nil {
+			return uFail("vault", 500)
+		}
+		_, err = u.Vault.reseal(key, q.Password, false)
+		clear(key)
+		if err != nil {
+			return uFail("busy", 500)
+		}
 	}
 	u.Pass = h
 	extra := map[string]any{}
@@ -682,7 +757,11 @@ func (s *usersServer) sizes() map[string]int64 {
 			out[u.ID] = n
 			continue
 		}
-		out[u.ID] = dirSize(userDir(s.data, u))
+		d := userDir(s.data, u)
+		if r, err := filepath.EvalSymlinks(d); err == nil {
+			d = r // an encrypted user's folder (vault.go)
+		}
+		out[u.ID] = dirSize(d)
 	}
 	return out
 }
@@ -701,4 +780,56 @@ func dirSize(dir string) int64 {
 		return nil
 	})
 	return n
+}
+
+// setVault: the signed-in user (not the first one, not the guest) asks to
+// encrypt their files, or to stop; it happens at their next sign-in
+// (vault.go). Turning on answers with the recovery code, shown once.
+func (s *usersServer) setVault(q usersReq) (map[string]any, int) {
+	l := loadUsers(s.data)
+	if s.vfs == nil {
+		return uFail("novault", 409)
+	}
+	me := s.me(l)
+	if me == nil || s.guestSignedIn(l) || !l.enabled() {
+		return uFail("denied", 403)
+	}
+	if me.Dir == "" {
+		return uFail("first", 409)
+	}
+	if out, code := s.tryPassword(l, me, q.Password); out != nil {
+		return out, code
+	}
+	v := me.Vault
+	switch {
+	case q.On && v != nil && (v.State == vaultOn || v.State == vaultPending):
+		return uDone(nil)
+	case q.On && v != nil && v.State == vaultOffPending:
+		v.State = vaultOn
+	case q.On:
+		if _, err := s.vfs.Base(); err != nil {
+			log.Printf("users: %v", err)
+			return uFail("novault", 409)
+		}
+		nv, code, err := newVault(q.Password)
+		if err != nil {
+			return uFail("busy", 500)
+		}
+		me.Vault = nv
+		if err := saveUsers(s.data, l); err != nil {
+			return uFail("busy", 500)
+		}
+		log.Printf("users: %s will be encrypted at the next sign-in", me.ID)
+		return uDone(map[string]any{"code": code})
+	case v == nil:
+		return uDone(nil)
+	case v.State == vaultOn:
+		v.State = vaultOffPending
+	default: // pending or failed: nothing was moved yet
+		me.Vault = nil
+	}
+	if err := saveUsers(s.data, l); err != nil {
+		return uFail("busy", 500)
+	}
+	return uDone(nil)
 }

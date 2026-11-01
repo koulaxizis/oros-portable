@@ -25,6 +25,13 @@ jobs:
           go-version: "1.22"
       - run: cd launcher && go vet ./... && go test ./...
       - run: cd tools/sticktest && go vet ./... && go test ./...
+      - name: Encrypted users with real fscrypt (ext4 on a loop device, as a normal user)
+        run: |
+          cd launcher && go test -c -o /tmp/launcher.test .
+          truncate -s 300M /tmp/fscrypt.img && mkfs.ext4 -q -F -O encrypt /tmp/fscrypt.img
+          sudo mkdir -p /mnt/fscrypt && sudo mount -o loop /tmp/fscrypt.img /mnt/fscrypt
+          sudo install -d -o "$(id -u)" -m 700 /mnt/fscrypt/t
+          OROS_FSCRYPT_DIR=/mnt/fscrypt/t /tmp/launcher.test -test.run 'Fscrypt' -test.v
       - name: Stick script test (loop devices)
         run: |
           sudo apt-get update -q && sudo apt-get install -y -q ntfs-3g
