@@ -95,6 +95,17 @@ func (t *trayApp) ready() {
 	systray.SetOnTapped(t.openQuick)
 	quick := systray.AddMenuItem(word("Add or search", "Προσθήκη ή αναζήτηση", "Hinzufügen oder suchen"), "")
 	open := systray.AddMenuItem(word("Open orOS", "Άνοιγμα orOS", "orOS öffnen"), "")
+	swap := systray.AddMenuItem(word("Switch user", "Αλλαγή χρήστη", "Benutzer wechseln"), "")
+	go func() { // shown only while there are users (users.go)
+		for {
+			if loadUsers(t.lay.data).enabled() {
+				swap.Show()
+			} else {
+				swap.Hide()
+			}
+			time.Sleep(10 * time.Second)
+		}
+	}()
 	systray.AddSeparator()
 	auto := systray.AddMenuItemCheckbox(word("Start with the computer", "Εκκίνηση με τον υπολογιστή", "Mit dem Computer starten"), "", autostartOn())
 	systray.AddSeparator()
@@ -106,6 +117,8 @@ func (t *trayApp) ready() {
 				t.openQuick()
 			case <-open.ClickedCh:
 				t.open(appURL)
+			case <-swap.ClickedCh:
+				t.switchUser()
 			case <-auto.ClickedCh:
 				on := !autostartOn()
 				if err := setAutostart(on, trayCommand()); err != nil {
@@ -171,22 +184,43 @@ func (t *trayApp) open(url string, extra ...string) {
 		return
 	}
 	go func() {
-		defer t.opening.Store(false)
 		t.takeServer()
-		if err := startBrowser(t.lay, url, extra...); err != nil {
+		// With users, the sign-in window comes first and the session
+		// waits for the user's browser (session.go); "opening" only covers
+		// the start.
+		launch := func(ul layout, url string, extra ...string) error {
+			err := startBrowser(ul, url, extra...)
+			t.opening.Store(false)
+			if err != nil {
+				return err
+			}
+			if loadUsers(ul.data).enabled() {
+				waitUserClosed(ul.userFolder(), time.Minute)
+			}
+			return nil
+		}
+		if err := runSession(t.lay, url, extra, launch); err != nil {
 			notify(err.Error())
 		}
+		t.opening.Store(false)
 	}()
 }
 
-// windowOpen: a browser has an orOS profile in use.
-func (t *trayApp) windowOpen() bool {
-	for _, p := range []string{"profile", "profile-system"} {
-		if profileInUse(filepath.Join(t.lay.data, p)) {
-			return true
-		}
+// switchUser: the signed-in user's orOS signs out (orOS sends what is
+// unsynced first, then closes its windows); with nobody signed in it
+// opens the sign-in window.
+func (t *trayApp) switchUser() {
+	if _, ok := activeUser(t.lay.data); ok {
+		t.open(appURL + "#oros-signout")
+		return
 	}
-	return false
+	t.open(appURL)
+}
+
+// windowOpen: a browser has an orOS profile in use (any user's, or the
+// sign-in window).
+func (t *trayApp) windowOpen() bool {
+	return anyProfileInUse(t.lay.data)
 }
 
 // maintain checks for updates (at most every 6 hours, checkUpdatesLater)
@@ -299,7 +333,18 @@ func startBrowser(lay layout, url string, extra ...string) error {
 // only starts the browser; otherwise it serves until the window closes.
 func runQuick(lay layout) {
 	if alreadyRunning() {
-		if err := startBrowser(lay, quickURL, quickArgs()...); err != nil {
+		// With users, only the signed-in user's profile opens, or the
+		// sign-in window first (session.go).
+		launch := func(ul layout, url string, extra ...string) error {
+			if err := startBrowser(ul, url, extra...); err != nil {
+				return err
+			}
+			if loadUsers(ul.data).enabled() {
+				waitUserClosed(ul.userFolder(), time.Minute)
+			}
+			return nil
+		}
+		if err := runSession(lay, quickURL, quickArgs(), launch); err != nil {
 			fail(err.Error())
 		}
 		return

@@ -179,7 +179,7 @@ func runWindow(lay layout, appDir, url string, extra ...string) {
 	}
 	if srv == nil {
 		log.Printf("server already running, opening a window only")
-		_ = launchBrowser(lay, url, extra...)
+		_ = runSession(lay, url, extra, launchBrowser)
 		return
 	}
 	defer shutdown(srv)
@@ -187,7 +187,9 @@ func runWindow(lay layout, appDir, url string, extra ...string) {
 	defer stopBridge(lay)
 
 	checkUpdatesLater(lay)
-	if err := launchBrowser(lay, url, extra...); err != nil {
+	// runSession picks whose profile opens (session.go): without users,
+	// the data folder's, as always.
+	if err := runSession(lay, url, extra, launchBrowser); err != nil {
 		fail(err.Error())
 	}
 	log.Printf("browser closed; data is saved")
@@ -289,6 +291,18 @@ func newDirHandler(dir func() string) http.Handler {
 			_, _ = io.WriteString(w, markerBody)
 			return
 		}
+		if r.URL.Path == loginPath || strings.HasPrefix(r.URL.Path, loginAssets) {
+			serveLogin(w, r) // the sign-in window (usersapi.go)
+			return
+		}
+		if strings.HasPrefix(r.URL.Path, usersPrefix) {
+			if usersAPI == nil {
+				http.NotFound(w, r)
+				return
+			}
+			usersAPI.ServeHTTP(w, r)
+			return
+		}
 		if strings.HasPrefix(r.URL.Path, fsPrefix) {
 			if fsAPI == nil {
 				http.NotFound(w, r)
@@ -361,7 +375,7 @@ type candidate struct {
 // Chromium-family browsers. A system browser gets its own profile folder,
 // because a profile written by a newer Chromium may not open in an older one.
 func browserCandidates(lay layout) []candidate {
-	data := lay.data
+	data := lay.userFolder()
 	var out []candidate
 	if p := os.Getenv("OROS_PORTABLE_BROWSER"); p != "" {
 		out = append(out, candidate{p, filepath.Join(data, "profile"), true})

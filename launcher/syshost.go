@@ -69,7 +69,7 @@ type session struct {
 // wins.
 func loadSession(lay layout) session {
 	s := session{Fullscreen: !lay.installed}
-	if b, err := os.ReadFile(filepath.Join(lay.data, sessionFile)); err == nil {
+	if b, err := os.ReadFile(filepath.Join(lay.userFolder(), sessionFile)); err == nil {
 		_ = json.Unmarshal(b, &s)
 	}
 	return s
@@ -77,10 +77,10 @@ func loadSession(lay layout) session {
 
 func saveSession(lay layout, s session) error {
 	b, _ := json.Marshal(s)
-	if err := os.MkdirAll(lay.data, 0o755); err != nil {
+	if err := os.MkdirAll(lay.userFolder(), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(lay.data, sessionFile), b, 0o644)
+	return os.WriteFile(filepath.Join(lay.userFolder(), sessionFile), b, 0o644)
 }
 
 // sysBrowserArgs are the extra browser flags when the extension is there

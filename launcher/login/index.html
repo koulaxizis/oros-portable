@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>orOS</title>
+<link rel="stylesheet" href="/__oros/login/login.css">
+<script src="/__oros/login/login.js" defer></script>
+</head>
+<body>
+<main id="app" aria-live="polite">
+  <header>
+    <div id="clock" class="clock"></div>
+    <div id="date" class="date"></div>
+  </header>
+  <section id="pick" hidden>
+    <h1 id="t-who"></h1>
+    <ul id="users" class="users"></ul>
+  </section>
+  <section id="pass" hidden>
+    <div id="pass-avatar" class="avatar big" aria-hidden="true"></div>
+    <h1 id="pass-name"></h1>
+    <form id="pass-form" autocomplete="off">
+      <label for="pw" id="t-pw" class="sr"></label>
+      <div class="pw">
+        <input id="pw" type="password" autocomplete="current-password" maxlength="256" required>
+        <button type="button" id="pw-show" class="ghost"></button>
+      </div>
+      <p id="pass-msg" class="msg" role="alert"></p>
+      <button type="submit" id="pass-go" class="primary"></button>
+    </form>
+    <p class="links">
+      <button type="button" id="pass-back" class="link"></button>
+      <button type="button" id="pass-forgot" class="link" hidden></button>
+    </p>
+  </section>
+  <section id="rec" hidden>
+    <h1 id="t-rec"></h1>
+    <p id="t-rec-help" class="help"></p>
+    <form id="rec-form" autocomplete="off">
+      <label for="rec-code" id="t-rec-code"></label>
+      <input id="rec-code" type="text" maxlength="40" autocapitalize="characters" spellcheck="false" required>
+      <label for="rec-pw" id="t-rec-pw"></label>
+      <input id="rec-pw" type="password" autocomplete="new-password" maxlength="256" required>
+      <label for="rec-pw2" id="t-rec-pw2"></label>
+      <input id="rec-pw2" type="password" autocomplete="new-password" maxlength="256" required>
+      <p id="rec-msg" class="msg" role="alert"></p>
+      <button type="submit" id="rec-go" class="primary"></button>
+    </form>
+    <p class="links"><button type="button" id="rec-back" class="link"></button></p>
+  </section>
+  <section id="code" hidden>
+    <h1 id="t-code"></h1>
+    <p id="t-code-help" class="help"></p>
+    <p id="code-value" class="code"></p>
+    <button type="button" id="code-ok" class="primary"></button>
+  </section>
+  <section id="opening" hidden>
+    <div class="spin" aria-hidden="true"></div>
+    <h1 id="t-opening"></h1>
+  </section>
+  <footer>
+    <span class="langs" id="langs">
+      <button type="button" data-lang="en">EN</button>
+      <button type="button" data-lang="el">ΕΛ</button>
+      <button type="button" data-lang="de">DE</button>
+    </span>
+    <button type="button" id="close" class="link"></button>
+  </footer>
+</main>
+</body>
+</html>

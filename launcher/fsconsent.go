@@ -21,7 +21,8 @@ const consentFile = "computer-files.json"
 
 type fsConsent struct {
 	mu       sync.Mutex
-	file     string
+	file     string // tests: a fixed file; otherwise the signed-in user's (users.go)
+	data     string
 	computer string
 	always   bool   // orOS USB
 	def      string // "on" (desktop apps) or "ask" (a stick)
@@ -37,12 +38,21 @@ func newFSConsent(lay layout, always bool) *fsConsent {
 		sum := sha256.Sum256([]byte("oros-computer-files:" + id))
 		id = hex.EncodeToString(sum[:12])
 	}
-	return &fsConsent{file: filepath.Join(lay.data, consentFile), computer: id, always: always, def: def}
+	return &fsConsent{data: lay.data, computer: id, always: always, def: def}
+}
+
+// path: each user answers for themselves, so the answer lives in the
+// signed-in user's folder (the data folder for the first user).
+func (c *fsConsent) path() string {
+	if c.file != "" {
+		return c.file
+	}
+	return filepath.Join(currentUserDir(c.data), consentFile)
 }
 
 func (c *fsConsent) read() map[string]string {
 	m := map[string]string{}
-	if b, err := os.ReadFile(c.file); err == nil {
+	if b, err := os.ReadFile(c.path()); err == nil {
 		_ = json.Unmarshal(b, &m)
 	}
 	return m
@@ -75,12 +85,13 @@ func (c *fsConsent) set(on bool) error {
 	m := c.read()
 	m[c.computer] = map[bool]string{true: "on", false: "off"}[on]
 	b, _ := json.MarshalIndent(m, "", "  ")
-	if err := os.MkdirAll(filepath.Dir(c.file), 0o755); err != nil {
+	file := c.path()
+	if err := os.MkdirAll(filepath.Dir(file), 0o755); err != nil {
 		return err
 	}
-	tmp := c.file + ".tmp"
+	tmp := file + ".tmp"
 	if err := os.WriteFile(tmp, b, 0o644); err != nil {
 		return err
 	}
-	return os.Rename(tmp, c.file)
+	return os.Rename(tmp, file)
 }

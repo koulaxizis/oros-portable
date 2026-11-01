@@ -59,6 +59,26 @@ On [orOS USB](https://github.com/koulaxizis/oros-usb) (the live stick and orOS i
 | `POST op` `{op, path, to, root, id, dev}` | `mkdir`, `rename`, `copy`, `move`, `trash`, `restore`, `purge`, `mount`, `unmount`, `recyclebin` (Windows) |
 | `GET trash`, `GET disks` | the Trash items, the disks that can be opened |
 
+### Users on one computer or stick
+
+Several people can share one stick or one installed orOS, each with their own orOS: their own data, password, sync account and settings (`launcher/users.go`, `usersapi.go`, `session.go`, sign-in window in `launcher/login/`). Each user is a browser profile of their own (`--user-data-dir`), so orOS and its encrypted sync work unchanged and one user never sees another's data.
+
+- With one user nothing changes: no sign-in window, the profiles stay in `data/profile` and `data/profile-system`.
+- Adding a second user (orOS Settings › Users) makes the person already there the owner; they keep those folders as they are, so nothing moves. Every other user gets `data/users/<id>/` (profiles, Internet window, window choice, "This computer" answer). The owner gets a recovery code to write down.
+- From then on each start shows the sign-in window, in its own empty profile (`data/login`), so signing in loads nobody's data. One user at a time; Sign out in orOS (or Switch user in the tray) brings the window back. An optional guest signs in without a password into a folder emptied before and after each guest session.
+- Passwords: a PIN of 4-12 digits or at least 6 characters, kept only as a PBKDF2-HMAC-SHA-256 hash (600 000 rounds) in `data/users.json`; after 5 wrong tries each try waits (30 s, doubling, up to 15 minutes). The owner adds and removes users, resets their passwords, turns the guest on and can hand the owner role on, each time with their own password. The first user's folders can never be removed.
+- Honest limit: the password keeps people away from the screen. Someone who reads the stick on another computer can read the profile folders; on orOS USB the stick's encryption (LUKS) covers that.
+
+| Call (`/__oros/users/`) | |
+|---|---|
+| `GET state` | `{enabled, me, users[], guest, max, lang, canAdd, recovery}` (no hashes) |
+| `POST login`, `recover` | the sign-in window: `{id, password}`, `{code, password}` |
+| `POST signout` | back to the sign-in window once the user's browser closes |
+| `POST add`, `remove`, `password`, `rename`, `owner`, `guest` | owner actions carry `auth` (the owner's password); the first `add` carries `ownerName` and `ownerPassword` |
+| `GET sizes` | bytes per user folder |
+
+Only pages of this server may call it: the Host check, `Sec-Fetch-Site: same-origin`, the same `Origin` and the `X-Oros-Users: 1` header on every POST.
+
 ## Installers
 
 The same launcher and browser also install on a computer (`scripts/build-installers.sh`, built in CI next to the portable zips):
