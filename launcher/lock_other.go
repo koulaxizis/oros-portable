@@ -26,17 +26,3 @@ func profileInUse(profile string) bool {
 	err = syscall.Kill(pid, 0)
 	return err == nil || errors.Is(err, syscall.EPERM)
 }
-
-// closeProfile asks the browser that holds a profile to close (SIGTERM:
-// Chromium saves and quits), used for a signed-out user's Internet window.
-func closeProfile(profile string) {
-	target, err := os.Readlink(filepath.Join(profile, "SingletonLock"))
-	if err != nil {
-		return
-	}
-	pid, err := strconv.Atoi(target[strings.LastIndex(target, "-")+1:])
-	if err != nil || pid <= 1 || pid == os.Getpid() {
-		return
-	}
-	_ = syscall.Kill(pid, syscall.SIGTERM)
-}

@@ -21,6 +21,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -59,6 +60,111 @@ func sysExtDir(lay layout) string {
 	return d
 }
 
+// bundledExtensions are the extension folders next to the launcher that
+// the bundled browser loads, in this order: the System extension, the
+// orOS add-on (Passwords fill and save on web pages, its orOS address
+// preset to this launcher's by oros-usb scripts/addon.sh) and uBlock
+// Origin Lite. The Internet window opens in the same profile (sysweb.go),
+// so the add-on there reaches orOS. The lite edition has none.
+func bundledExtensions(lay layout) []string {
+	var out []string
+	for _, name := range []string{sysExtFolder, addonDir, ubolDir} {
+		d := filepath.Join(lay.root, name)
+		if _, err := os.Stat(filepath.Join(d, "manifest.json")); err != nil {
+			continue
+		}
+		if name == ubolDir {
+			if d = writableExt(lay, d); d == "" {
+				continue
+			}
+		}
+		out = append(out, d)
+	}
+	return out
+}
+
+// writableExt: Chromium writes an unpacked extension's indexed filter
+// rules (uBlock Origin Lite's) into the extension's own folder and refuses
+// to load it from a read-only one, with a dialog over orOS. The stick and
+// the Windows setup keep it writable; the AppImage and the .deb do not,
+// so there it runs from a copy in the data folder, made again when the
+// program brings another manifest. "" when no copy can be made.
+func writableExt(lay layout, dir string) string {
+	probe := filepath.Join(dir, ".oros-write-test")
+	if f, err := os.OpenFile(probe, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644); err == nil {
+		f.Close()
+		os.Remove(probe)
+		return dir
+	}
+	copyDir := filepath.Join(lay.data, filepath.Base(dir))
+	want, err := os.ReadFile(filepath.Join(dir, "manifest.json"))
+	if err != nil {
+		return ""
+	}
+	if have, err := os.ReadFile(filepath.Join(copyDir, "manifest.json")); err == nil && bytes.Equal(have, want) {
+		return copyDir
+	}
+	tmp := copyDir + ".new"
+	os.RemoveAll(tmp)
+	if err := os.MkdirAll(lay.data, 0o755); err != nil {
+		log.Printf("extension copy %s: %v", dir, err)
+		return ""
+	}
+	if err := copyTree(dir, tmp, false); err != nil {
+		log.Printf("extension copy %s: %v", dir, err)
+		os.RemoveAll(tmp)
+		return ""
+	}
+	os.RemoveAll(copyDir)
+	if err := os.Rename(tmp, copyDir); err != nil {
+		log.Printf("extension copy %s: %v", dir, err)
+		return ""
+	}
+	return copyDir
+}
+
+// joinExtensions merges every --load-extension flag into the first one:
+// Chromium reads only one, and OROS_PORTABLE_BROWSER_ARGS (orOS USB, the
+// tests) may bring its own.
+func joinExtensions(args []string) []string {
+	const flag = "--load-extension="
+	var dirs []string
+	at := -1
+	out := make([]string, 0, len(args))
+	for _, a := range args {
+		if !strings.HasPrefix(a, flag) {
+			out = append(out, a)
+			continue
+		}
+		for _, d := range strings.Split(strings.TrimPrefix(a, flag), ",") {
+			if d != "" && !containsString(dirs, d) {
+				dirs = append(dirs, d)
+			}
+		}
+		if at < 0 {
+			at = len(out)
+			out = append(out, "")
+		}
+	}
+	if at < 0 {
+		return out
+	}
+	if len(dirs) == 0 {
+		return append(out[:at], out[at+1:]...)
+	}
+	out[at] = flag + strings.Join(dirs, ",")
+	return out
+}
+
+func containsString(l []string, s string) bool {
+	for _, x := range l {
+		if x == s {
+			return true
+		}
+	}
+	return false
+}
+
 // session is the window preference.
 type session struct {
 	Fullscreen bool `json:"fullscreen"`
@@ -83,19 +189,24 @@ func saveSession(lay layout, s session) error {
 	return os.WriteFile(filepath.Join(lay.userFolder(), sessionFile), b, 0o644)
 }
 
-// sysBrowserArgs are the extra browser flags when the extension is there
+// sysBrowserArgs are the extra browser flags when extensions are there
 // and the browser is the bundled one (Edge and Chrome refuse
-// --load-extension). The extension loads with every window, because the
+// --load-extension). The extensions load with every window, because the
 // first window started on the profile decides what the browser loads;
-// full screen applies to the main orOS window only. It also registers
-// the launcher as the extension's native host.
+// full screen applies to the main orOS window only. With the System
+// extension it also registers the launcher as its native host.
 func sysBrowserArgs(lay layout, c candidate, url string) []string {
-	dir := sysExtDir(lay)
-	if dir == "" || !c.bundled {
+	if !c.bundled {
 		return nil
 	}
-	registerHostOnce(lay, c.profile)
-	args := []string{"--load-extension=" + dir}
+	ext := bundledExtensions(lay)
+	if len(ext) == 0 {
+		return nil
+	}
+	if sysExtDir(lay) != "" {
+		registerHostOnce(lay, c.profile)
+	}
+	args := []string{"--load-extension=" + strings.Join(ext, ",")}
 	if url == appURL && loadSession(lay).Fullscreen {
 		args = append(args, "--start-fullscreen")
 	}

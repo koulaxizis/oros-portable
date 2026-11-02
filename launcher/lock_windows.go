@@ -14,7 +14,3 @@ func profileInUse(profile string) bool {
 	}
 	return os.Remove(lock) != nil
 }
-
-// closeProfile: Windows' lock file names no process, so a signed-out
-// user's Internet window stays until it is closed (README, Users).
-func closeProfile(profile string) {}
