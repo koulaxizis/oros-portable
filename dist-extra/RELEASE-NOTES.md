@@ -12,7 +12,7 @@ The installed orOS uses its own private browser (ungoogled-chromium), works offl
 
 **orOS Studio with your plugins and sound card:** the installers and the full stick edition carry [orOS Bridge](https://github.com/koulaxizis/oros-bridge), which starts with orOS by itself, so Studio can use your VST3 and CLAP plugins and record through your sound card (ASIO® on Windows; JACK, PipeWire, PulseAudio or ALSA on Linux). The pairing code shows up over orOS the first time Studio connects. ASIO is a registered trademark of Steinberg Media Technologies GmbH.
 
-![ASIO Compatible](https://raw.githubusercontent.com/koulaxizis/oros-bridge/main/asio/logo/asio-compatible-bw.png)
+<img src="https://raw.githubusercontent.com/koulaxizis/oros-bridge/main/asio/logo/asio-compatible-bw.png" alt="ASIO Compatible" height="72">
 
 **Tor button:** the installers and the full stick edition have a **Tor** button next to Internet at the top of orOS. The first press downloads the official Tor Browser (about 110 MB) from torproject.org, checks its signature and keeps it in your orOS folder; after that it opens at once in its own window and updates itself. Each orOS user has their own. [Private browsing](https://github.com/koulaxizis/oros-portable/blob/main/PRIVATE-BROWSING.md)
 
