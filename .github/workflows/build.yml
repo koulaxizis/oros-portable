@@ -46,6 +46,27 @@ jobs:
           R2="$(mktemp -d)"
           OROS_PORTABLE_ROOT="$R2" /tmp/orOS tor --fetch --no-start --dir "$R2/tor" --progress "$R2/tor.json" || { cat "$R2/tor.json" "$R2/data/system.log"; exit 1; }
           test -x "$R2/tor/tor-browser/Browser/start-tor-browser"
+      - name: Local AI with the real Ollama (download, checksum, one answer, stop)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          cd launcher && go build -o /tmp/orOS .
+          R="$(mktemp -d)"
+          curl -fsSL --retry 3 -o /tmp/ollama.sh https://raw.githubusercontent.com/koulaxizis/oros-usb/main/scripts/ollama.sh
+          sh /tmp/ollama.sh "$R/ollama-linux.json" && cat "$R/ollama-linux.json"
+          OROS_PORTABLE_ROOT="$R" /tmp/orOS ai --fetch --model qwen3:0.6b || { cat "$R/data/ai/progress.json" "$R/data/ai/serve.log"; exit 1; }
+          grep -q '"done":true' "$R/data/ai/progress.json" && ! grep -q error "$R/data/ai/progress.json"
+          du -sh "$R/data/ai/ollama" "$R/data/ai/models"
+          test ! -e "$R/data/ai/ollama/lib/ollama/cuda_v12" && test ! -e "$R/data/ai/ollama/lib/ollama/cuda_v13"
+          # orOS's page gets an answer; another site is turned away.
+          curl -fsS --max-time 300 -H 'Origin: http://localhost:47800' http://127.0.0.1:11434/api/chat \
+            -d '{"model":"qwen3:0.6b","stream":false,"think":false,"messages":[{"role":"user","content":"Say hi"}]}' | tee /tmp/answer.json
+          jq -e '.message.content | length > 0' /tmp/answer.json
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Origin: https://example.com' http://127.0.0.1:11434/api/version)" = 403
+          # its key stays in the folder, not in the home folder
+          test ! -e "$HOME/.ollama" && test -d "$R/data/ai/.ollama"
+          OROS_PORTABLE_ROOT="$R" /tmp/orOS ai --stop
+          ! curl -s --max-time 2 http://127.0.0.1:11434/api/version
       - name: Stick script test (loop devices)
         run: |
           sudo apt-get update -q && sudo apt-get install -y -q ntfs-3g
@@ -88,6 +109,39 @@ jobs:
             if ($hit) { "Add or remove programs entry left: $($hit.Name)"; exit 1 }
           }
           Get-Content "$r\tor.json"
+
+      - name: Local AI with the real Ollama (zip download, checksum, one answer, stop)
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          cd launcher; go build -o "$env:RUNNER_TEMP\orOS.exe" .; if ($LASTEXITCODE) { exit 1 }
+          $r = Join-Path $env:RUNNER_TEMP 'ai stick'
+          New-Item -ItemType Directory $r | Out-Null
+          Invoke-WebRequest -UseBasicParsing -OutFile "$env:RUNNER_TEMP\ollama.sh" https://raw.githubusercontent.com/koulaxizis/oros-usb/main/scripts/ollama.sh
+          # Git's bash, not WSL's
+          & "$env:ProgramFiles\Git\bin\bash.exe" ($env:RUNNER_TEMP.Replace('\', '/') + '/ollama.sh') ($r.Replace('\', '/') + '/ollama-windows.json') ollama-windows-amd64.zip
+          if ($LASTEXITCODE) { exit 1 }
+          Get-Content "$r\ollama-windows.json"
+          $env:OROS_PORTABLE_ROOT = $r
+          & "$env:RUNNER_TEMP\orOS.exe" ai --fetch --model qwen3:0.6b
+          if ($LASTEXITCODE) { Get-Content "$r\data\ai\progress.json", "$r\data\ai\serve.log" -ErrorAction SilentlyContinue; exit 1 }
+          Get-Content "$r\data\ai\progress.json"
+          if (-not (Test-Path "$r\data\ai\ollama\ollama.exe")) { exit 1 }
+          if (Test-Path "$r\data\ai\ollama\lib\ollama\cuda_v13") { "CUDA was kept"; exit 1 }
+          if (Test-Path "$r\data\ai\download.zip") { "the zip was left behind"; exit 1 }
+          "{0:N0} MB kept" -f ((Get-ChildItem -Recurse "$r\data\ai\ollama" | Measure-Object Length -Sum).Sum / 1MB)
+          $body = '{"model":"qwen3:0.6b","stream":false,"think":false,"messages":[{"role":"user","content":"Say hi"}]}'
+          $a = Invoke-RestMethod -Method Post -Uri http://127.0.0.1:11434/api/chat -Headers @{ Origin = 'http://localhost:47800' } -Body $body -TimeoutSec 300
+          if (-not $a.message.content) { "no answer"; exit 1 }
+          "answer: $($a.message.content)"
+          try { Invoke-WebRequest -UseBasicParsing -Uri http://127.0.0.1:11434/api/version -Headers @{ Origin = 'https://example.com' } | Out-Null; "foreign origin let in"; exit 1 } catch { if ($_.Exception.Response.StatusCode.value__ -ne 403) { throw } }
+          if (Test-Path "$env:USERPROFILE\.ollama") { "a key was left in the home folder"; exit 1 }
+          & "$env:RUNNER_TEMP\orOS.exe" ai --stop
+          Start-Sleep 2
+          if (Get-Process ollama -ErrorAction SilentlyContinue) { "Ollama still runs"; Get-Process ollama; exit 1 }
+          # a stopped Ollama leaves nothing locked: the folder can go
+          Remove-Item -Recurse -Force "$r\data\ai"
 
   package:
     needs: test

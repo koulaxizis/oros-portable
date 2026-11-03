@@ -73,6 +73,11 @@ func main() {
 		appendLog(lay.data)
 		os.Exit(torMain(lay, os.Args[2:]))
 	}
+	if len(os.Args) > 1 && os.Args[1] == "ai" {
+		// The local AI's download, start or stop (ai.go).
+		appendLog(lay.data)
+		os.Exit(aiMain(lay, os.Args[2:]))
+	}
 	if len(os.Args) > 1 && os.Args[1] == "update-stage" {
 		appendLog(lay.data)
 		stageUpdate(lay)
@@ -190,6 +195,8 @@ func runWindow(lay layout, appDir, url string, extra ...string) {
 	defer shutdown(srv)
 	startBridge(lay) // plugins and the sound card for Studio (bridge.go)
 	defer stopBridge(lay)
+	startAI(lay) // the local AI for the Assistant, when installed (ai.go)
+	defer stopAI(lay)
 
 	checkUpdatesLater(lay)
 	// runSession picks whose profile opens (session.go): without users,
