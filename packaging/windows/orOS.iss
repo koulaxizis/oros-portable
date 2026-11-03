@@ -122,6 +122,9 @@ Filename: "{app}\orOS.exe"; Parameters: "tray"; Flags: nowait; Check: RelaunchTr
 Filename: "{app}\orOS.exe"; Parameters: "tray"; Flags: nowait skipifsilent; Tasks: autostart
 
 [UninstallRun]
+; The local AI this orOS started (launcher/ai.go); an Ollama the person
+; installed is not touched.
+Filename: "{app}\orOS.exe"; Parameters: "ai --stop"; Flags: runhidden waituntilterminated; RunOnceId: "StopAI"
 ; The tray keeps orOS.exe running; stop it so its files can go.
 Filename: "{sys}\taskkill.exe"; Parameters: "/F /IM orOS.exe"; Flags: runhidden; RunOnceId: "StopOrOS"
 

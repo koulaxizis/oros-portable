@@ -82,6 +82,14 @@ ADDON="$(sh "$(find "$TMP" -maxdepth 3 -type f -path '*/scripts/addon.sh' | head
 # orOS USB's own script: fetched from torproject.org and kept only with the
 # fingerprint pinned there. Needs gpg.
 sh "$(find "$TMP" -maxdepth 3 -type f -path '*/scripts/tor-key.sh' | head -1)" "$FULL/tor-browser-developers.gpg"
+# The local AI button's download (launcher/ai.go): the latest Ollama
+# release for each system, pinned by its SHA-256 with orOS USB's own script
+# (GitHub's digest and the release's sha256sum.txt must agree). Ollama is
+# not carried; the button downloads it from GitHub. Needs jq.
+OLLAMA_SH="$(find "$TMP" -maxdepth 3 -type f -path '*/scripts/ollama.sh' | head -1)"
+GITHUB_TOKEN="${GITHUB_TOKEN:-${GH_TOKEN:-}}" sh "$OLLAMA_SH" "$FULL/ollama-linux.json" ollama-linux-amd64.tar.zst
+GITHUB_TOKEN="${GITHUB_TOKEN:-${GH_TOKEN:-}}" sh "$OLLAMA_SH" "$FULL/ollama-windows.json" ollama-windows-amd64.zip
+OLLAMA_TAG="$(jq -r .version "$FULL/ollama-linux.json")"
 USB_COMMIT="$(gh api repos/koulaxizis/oros-usb/commits/main -q .sha 2>/dev/null || echo unknown)"
 rm -rf "$TMP"
 
@@ -151,12 +159,13 @@ for dir in "$LITE" "$FULL"; do
   cp "$ROOT/packaging/CREDITS.txt" "$dir/LICENSES/CREDITS.txt"
   # The launcher is a Go program: the Go standard library's licence goes with it,
   # and those of the Go modules it is built with (go.mod: the tray icon, and
-  # the Tor button's signature check and .tar.xz unpacking).
+  # the Tor button's signature check and .tar.xz unpacking, the local AI's
+  # .tar.zst unpacking).
   cp "$(go env GOROOT)/LICENSE" "$dir/LICENSES/Go-BSD.txt"
   for m in "fyne.io/systray:systray-Apache-2.0.txt" "github.com/godbus/dbus/v5:godbus-BSD-2.txt" \
            "golang.org/x/sys:golang-x-sys-BSD.txt" "github.com/ProtonMail/go-crypto:go-crypto-BSD.txt" \
            "github.com/cloudflare/circl:circl-BSD.txt" "golang.org/x/crypto:golang-x-crypto-BSD.txt" \
-           "github.com/ulikunitz/xz:xz-BSD.txt"; do
+           "github.com/ulikunitz/xz:xz-BSD.txt" "github.com/klauspost/compress:klauspost-compress-BSD.txt"; do
     mdir="$(cd "$ROOT/launcher" && go list -m -f '{{.Dir}}' "${m%%:*}")"
     cp "$mdir/LICENSE" "$dir/LICENSES/${m#*:}"
   done

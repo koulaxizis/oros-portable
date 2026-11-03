@@ -145,6 +145,7 @@ func (t *trayApp) exit() {
 		t.srv = nil
 	}
 	stopBridge(t.lay)
+	stopAI(t.lay)
 	t.mu.Unlock()
 	t.unlock()
 	log.Printf("tray closed")
@@ -165,6 +166,7 @@ func (t *trayApp) takeServer() bool {
 	}
 	t.srv = srv
 	startBridge(t.lay) // the bridge lives with the server (bridge.go)
+	startAI(t.lay)     // and the local AI (ai.go)
 	return true
 }
 
@@ -285,6 +287,7 @@ func (t *trayApp) release() {
 		t.srv = nil
 	}
 	stopBridge(t.lay)
+	stopAI(t.lay)
 	t.mu.Unlock()
 	t.unlock()
 	t.unlock = func() {}

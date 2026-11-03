@@ -12,5 +12,6 @@ require (
 
 require (
 	github.com/cloudflare/circl v1.6.0 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	golang.org/x/crypto v0.33.0 // indirect
 )

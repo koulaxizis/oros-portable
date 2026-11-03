@@ -274,6 +274,8 @@ type sysRequest struct {
 	On    bool   `json:"on,omitempty"`
 	Value int    `json:"value,omitempty"`
 	Mode  string `json:"mode,omitempty"`
+	// Model is a local AI model (ai.go): ai.install and ai.forget.
+	Model string `json:"model,omitempty"`
 	// Wi-Fi (sysnet.go). The password is used once and never logged.
 	SSID     string `json:"ssid,omitempty"`
 	Password string `json:"password,omitempty"`
@@ -427,6 +429,8 @@ func handleSys(lay layout, req sysRequest) sysReply {
 		return torStatus(lay)
 	case "tor.remove":
 		return removeTor(lay)
+	case "ai.status", "ai.start", "ai.install", "ai.forget", "ai.gpu", "ai.remove":
+		return aiHost(lay, req)
 	}
 	return sysFail(errUnsupported)
 }
@@ -446,6 +450,7 @@ func sysStatus(lay layout, p platformOps) sysReply {
 			"update": !lay.installed,                             // installed copies update themselves
 			"web":    webBrowser(lay) != "",                      // the Internet window (sysweb.go)
 			"tor":    webBrowser(lay) != "" && torAvailable(lay), // tor.go
+			"ai":     aiAvailable(lay),                           // ai.go
 		},
 	}
 	if v, m, ok := p.volume(); ok {

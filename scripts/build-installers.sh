@@ -33,6 +33,8 @@ stage() { # stage <dest> <os: linux|windows>
   if [ -d "$FULL/addon" ]; then cp -r "$FULL/addon" "$dest/"; fi
   # Tor Browser's signing key (launcher/tor.go)
   if [ -f "$FULL/tor-browser-developers.gpg" ]; then cp "$FULL/tor-browser-developers.gpg" "$dest/"; fi
+  # The local AI button's pin for this system (launcher/ai.go)
+  if [ -f "$FULL/ollama-$os.json" ]; then cp "$FULL/ollama-$os.json" "$dest/"; fi
   # orOS Bridge for this system only (launcher/bridge.go)
   if [ -d "$FULL/bridge/$os" ]; then mkdir -p "$dest/bridge" && cp -r "$FULL/bridge/$os" "$dest/bridge/$os"; fi
   rm -f "$dest/browser/$os/chromedriver" "$dest/browser/$os/chromedriver.exe"

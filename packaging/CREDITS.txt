@@ -27,6 +27,13 @@ Christos Koulaxizis with the work of many others. Thank you to:
   (tor-browser-developers.gpg). Tor Browser is free software (MPL-2.0, Tor's
   BSD-3-Clause and others; its licences are inside it).
   https://www.torproject.org/
+- The Ollama authors: Ollama (MIT), which the local AI button of the full
+  edition and the installers downloads from its GitHub release on first use
+  (it is not part of this download), checked against the SHA-256 pinned in
+  ollama-linux.json and ollama-windows.json. Its licences, with llama.cpp's
+  (MIT), are inside it. https://github.com/ollama/ollama
+- The Qwen team (Alibaba Cloud): the Qwen3 models (Apache-2.0) that the
+  local AI button downloads through Ollama. https://github.com/QwenLM/Qwen3
 - orOS Bridge (bridge/, full edition and installers): plugins and the sound
   card for orOS Studio, MIT (orOS-Bridge-MIT.txt), with the VST 3 SDK and CLAP
   (MIT), JSON for Modern C++ (MIT) and miniaudio (public domain or MIT-0)
@@ -51,10 +58,11 @@ Christos Koulaxizis with the work of many others. Thank you to:
   Proton AG, BSD-3-Clause (go-crypto-BSD.txt); CIRCL by Cloudflare,
   BSD-3-Clause (circl-BSD.txt); golang.org/x/crypto by the Go Authors,
   BSD-3-Clause (golang-x-crypto-BSD.txt); xz by Ulrich Kunitz, BSD-3-Clause
-  (xz-BSD.txt).
+  (xz-BSD.txt). For the local AI's download: compress (zstd) by Klaus Post
+  and contributors, BSD-3-Clause (klauspost-compress-BSD.txt).
   https://github.com/fyne-io/systray https://github.com/godbus/dbus
   https://github.com/ProtonMail/go-crypto https://github.com/cloudflare/circl
-  https://github.com/ulikunitz/xz
+  https://github.com/ulikunitz/xz https://github.com/klauspost/compress
 - Jordan Russell and Martijn Laan: Inno Setup, which makes the Windows setup
   (orOS-Setup-*.exe), under the Inno Setup License.
   https://jrsoftware.org/isinfo.php
