@@ -67,6 +67,7 @@ func openWeb(lay layout) sysReply {
 	if err := os.MkdirAll(filepath.Join(lay.userFolder(), webProfile), 0o700); err != nil {
 		return sysFail(err)
 	}
+	seedNoSaving(filepath.Join(lay.userFolder(), webProfile)) // when it is the first window on the profile
 	if err := webStart(b, webArgs(lay)...); err != nil {
 		return sysFail(err)
 	}

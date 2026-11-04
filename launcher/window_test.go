@@ -101,3 +101,44 @@ func TestWindowArgsSeedsBeforeEitherWindow(t *testing.T) {
 		}
 	}
 }
+
+// Saving passwords, addresses and cards is turned off in a new profile and
+// in an older one where it was on, keeping every other setting.
+func TestSeedNoSaving(t *testing.T) {
+	for _, in := range []string{"", `{"credentials_enable_service":true,"profile":{"name":"x","password_manager_enabled":true},"autofill":{"profile_enabled":true}}`} {
+		p := t.TempDir()
+		if in != "" {
+			must(t, os.MkdirAll(filepath.Join(p, "Default"), 0o755))
+			must(t, os.WriteFile(filepath.Join(p, "Default", "Preferences"), []byte(in), 0o600))
+		}
+		seedNoSaving(p)
+		b, err := os.ReadFile(filepath.Join(p, "Default", "Preferences"))
+		must(t, err)
+		var prefs map[string]any
+		must(t, json.Unmarshal(b, &prefs))
+		for _, k := range noSaving {
+			m := prefs
+			if k[0] != "" {
+				m = prefs[k[0]].(map[string]any)
+			}
+			if m[k[1]] != false {
+				t.Fatalf("%v: %s", k, b)
+			}
+		}
+		if in != "" && prefs["profile"].(map[string]any)["name"] != "x" {
+			t.Fatal(string(b))
+		}
+	}
+}
+
+// A file we cannot read is left alone here too.
+func TestSeedNoSavingLeavesABrokenFile(t *testing.T) {
+	p := t.TempDir()
+	must(t, os.MkdirAll(filepath.Join(p, "Default"), 0o755))
+	f := filepath.Join(p, "Default", "Preferences")
+	must(t, os.WriteFile(f, []byte("{broken"), 0o600))
+	seedNoSaving(p)
+	if b, _ := os.ReadFile(f); string(b) != "{broken" {
+		t.Fatal(string(b))
+	}
+}
