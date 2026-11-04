@@ -178,6 +178,7 @@ func startLogin(lay, login layout) (*exec.Cmd, string, error) {
 	for _, c := range list {
 		args := append(append([]string{}, extra...), sysBrowserArgs(login, c, loginURL)...)
 		log.Printf("users: sign-in window with %s", c.path)
+		seedNoSaving(c.profile) // the sign-in password is not the browser's to keep
 		cmd := exec.Command(c.path, browserArgs(c.profile, loginURL, args...)...)
 		if err := cmd.Start(); err != nil {
 			log.Printf("browser: %v, trying the next one", err)

@@ -54,6 +54,7 @@ func windowArgs(profile, url string, extra []string) []string {
 			log.Printf("window placement: %v", err)
 		}
 	}
+	seedNoSaving(profile)
 	return browserArgs(profile, url, extra...)
 }
 
@@ -67,6 +68,70 @@ var restored = map[string]any{"left": 40, "top": 30, "right": 1240, "bottom": 83
 // (the small window's, saved by orOS Portable 0.3.0 under the same name)
 // gets the restored size.
 func seedMaximized(profile string) error {
+	return editPrefs(profile, func(prefs map[string]any) bool {
+		browser := child(prefs, "browser")
+		places := child(browser, "app_window_placement")
+		place := child(places, mainPlacement)
+		if place["maximized"] == true && wideEnough(place) {
+			return false
+		}
+		if !wideEnough(place) {
+			for k, v := range restored {
+				place[k] = v
+			}
+		}
+		place["maximized"] = true
+		return true
+	})
+}
+
+// noSaving: the browser never offers to save passwords, addresses or
+// cards (orOS Bible "Passwords"; the "Save password?" bubble appeared over
+// the vault passphrase). orOS Passwords keeps logins, in the orOS window
+// and, through the orOS add-on, in the Internet window. Chromium's names:
+// credentials_enable_service ("Offer to save passwords"),
+// credentials_enable_autosignin, profile.password_manager_enabled (the
+// older name) and autofill.profile_enabled / autofill.credit_card_enabled.
+// orOS USB sets the same through its managed policy (PasswordManagerEnabled,
+// AutofillAddressEnabled, AutofillCreditCardEnabled).
+var noSaving = [][2]string{
+	{"", "credentials_enable_service"},
+	{"", "credentials_enable_autosignin"},
+	{"profile", "password_manager_enabled"},
+	{"autofill", "profile_enabled"},
+	{"autofill", "credit_card_enabled"},
+}
+
+// seedNoSaving turns the saving off in the profile before a browser starts
+// on it, every time, so a profile from an older orOS Portable gets it too.
+// A running browser keeps its own copy and is left alone.
+func seedNoSaving(profile string) {
+	if profileInUse(profile) {
+		return
+	}
+	err := editPrefs(profile, func(prefs map[string]any) bool {
+		changed := false
+		for _, k := range noSaving {
+			m := prefs
+			if k[0] != "" {
+				m = child(prefs, k[0])
+			}
+			if m[k[1]] != false {
+				m[k[1]] = false
+				changed = true
+			}
+		}
+		return changed
+	})
+	if err != nil {
+		log.Printf("password saving: %v", err)
+	}
+}
+
+// editPrefs reads <profile>/Default/Preferences (or starts an empty one),
+// lets edit change it and writes it back when edit reports a change,
+// keeping every other setting. A file it cannot read is never overwritten.
+func editPrefs(profile string, edit func(map[string]any) bool) error {
 	file := filepath.Join(profile, "Default", "Preferences")
 	prefs := map[string]any{}
 	b, err := os.ReadFile(file)
@@ -80,18 +145,9 @@ func seedMaximized(profile string) error {
 	case !os.IsNotExist(err):
 		return err
 	}
-	browser := child(prefs, "browser")
-	places := child(browser, "app_window_placement")
-	place := child(places, mainPlacement)
-	if place["maximized"] == true && wideEnough(place) {
+	if !edit(prefs) {
 		return nil
 	}
-	if !wideEnough(place) {
-		for k, v := range restored {
-			place[k] = v
-		}
-	}
-	place["maximized"] = true
 	out, err := json.Marshal(prefs)
 	if err != nil {
 		return err
