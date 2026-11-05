@@ -20,6 +20,8 @@ The installed orOS uses its own private browser (ungoogled-chromium), works offl
 
 **Passwords on web pages:** in the installers and the full stick edition the **Internet** window now opens in the same browser as orOS and carries the orOS add-on, so it fills your orOS Passwords logins, cards and addresses on sites and offers to save new logins (nothing is saved until you press Save in Passwords). Sites you were signed in to in the Internet window ask you to sign in once more.
 
+**Start page:** the **Internet** window now opens on the orOS Start page (search, your favourite bookmarks and a Tor button) instead of a blank search page.
+
 **No "Save password?" from the browser:** orOS's browser no longer offers to save passwords, addresses or cards (it popped up over the sync passphrase); orOS Passwords keeps them.
 
 **Users:** add people in orOS Settings › Users; each has their own orOS, password and Internet window, and there is an optional guest. Encrypting each user's files is optional and only on orOS Live USB.
