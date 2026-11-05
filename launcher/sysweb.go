@@ -20,11 +20,22 @@ import (
 // leaves orOS as it was.
 
 const (
-	webHome    = "https://duckduckgo.com/"
-	webProfile = "profile" // the orOS window's, browserCandidates
-	addonDir   = "addon"
-	ubolDir    = "ubol"
+	webFallback = "https://duckduckgo.com/"
+	webProfile  = "profile" // the orOS window's, browserCandidates
+	addonDir    = "addon"
+	ubolDir     = "ubol"
 )
+
+// webHome is the Internet window's first page: orOS's Start page
+// (startpage/, orOS 5.33 and later: favourites from Bookmarks, search,
+// the Tor button) when the orOS this copy serves has it, otherwise
+// DuckDuckGo.
+func webHome(lay layout) string {
+	if _, err := os.Stat(filepath.Join(lay.appDir(), "startpage", "index.html")); err == nil {
+		return appURL + "startpage/"
+	}
+	return webFallback
+}
 
 // webBrowser is the bundled browser, or "" (the lite edition: an installed
 // browser has its own windows already).
@@ -53,7 +64,7 @@ func webArgs(lay layout) []string {
 		args = append(args, "--load-extension="+strings.Join(ext, ","))
 	}
 	args = joinExtensions(append(args, extraArgs()...)) // OROS_PORTABLE_BROWSER_ARGS, as for orOS's window
-	return append(args, webHome)
+	return append(args, webHome(lay))
 }
 
 // webStart runs the browser; tests replace it.

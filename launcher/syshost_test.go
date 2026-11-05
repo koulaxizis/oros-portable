@@ -395,8 +395,18 @@ func TestInternetWindow(t *testing.T) {
 	// orOS add-on there reaches Passwords.
 	a := strings.Join(got, " ")
 	if got[0] != "/stick/browser/chrome" || !strings.Contains(a, "--user-data-dir="+filepath.Join(lay.data, "profile")+" ") ||
-		strings.Contains(a, "--app") || strings.Contains(a, "load-extension") || !strings.HasSuffix(a, webHome) {
+		strings.Contains(a, "--app") || strings.Contains(a, "load-extension") || !strings.HasSuffix(a, webFallback) {
 		t.Fatalf("Internet window: %s", a)
+	}
+	// An orOS with the Start page (5.33 and later) opens there instead.
+	if err := os.MkdirAll(filepath.Join(lay.appDir(), "startpage"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(lay.appDir(), "startpage", "index.html"), []byte("<!doctype html>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if r := handleSys(lay, sysRequest{Cmd: "web.open"}); r["ok"] != true || got[len(got)-1] != appURL+"startpage/" {
+		t.Fatalf("Internet window with the Start page: %v %v", r, got)
 	}
 	if _, err := os.Stat(filepath.Join(lay.data, "web")); err == nil {
 		t.Fatal("the old web profile is not made any more")
