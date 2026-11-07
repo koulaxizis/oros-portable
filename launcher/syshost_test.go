@@ -201,11 +201,8 @@ func TestWindowModeIsKept(t *testing.T) {
 		t.Fatal("the desktop apps open in a window")
 	}
 	st := handleSys(inst, sysRequest{Cmd: "status"})
-	if st["caps"].(map[string]bool)["update"] {
-		t.Fatal("installed copies update themselves; the panel must not offer it")
-	}
-	if r := handleSys(inst, sysRequest{Cmd: "update.start"}); r["ok"] != false {
-		t.Fatal("update.start on an installed copy")
+	if !st["caps"].(map[string]bool)["update"] {
+		t.Fatal("installed copies offer Update orOS too (their background update can fail)")
 	}
 }
 

@@ -12,8 +12,9 @@ import (
 	"time"
 )
 
-// "Update orOS" in the System panel of a portable copy (installed copies
-// update themselves, autoupdate.go). The download runs in a process of
+// "Update orOS" in the System panel. Installed copies also update
+// themselves in the background (autoupdate.go); the panel is the way to
+// check at once and to see why an update did not come. The download runs in a process of
 // its own ("orOS update-stage"), because Chromium ends the native host as
 // soon as it has answered; it stages the new orOS in app.next, which the
 // next start swaps in (beforeStart), and writes its progress to a file
@@ -57,9 +58,6 @@ func readProgress(lay layout) (updateProgress, bool) {
 }
 
 func updateCheck(lay layout) sysReply {
-	if lay.installed {
-		return sysFail(errUnsupported)
-	}
 	latest, err := latestCommit()
 	if err != nil {
 		return sysFail(err)
@@ -84,9 +82,6 @@ func shortSHA(s string) string {
 }
 
 func updateStart(lay layout) sysReply {
-	if lay.installed {
-		return sysFail(errUnsupported)
-	}
 	if p, found := readProgress(lay); found && p.Running {
 		return ok2()
 	}
@@ -126,6 +121,7 @@ func stageUpdate(lay layout) {
 	if err != nil {
 		p.Error, p.Percent = err.Error(), 0
 		log.Printf("update: %v", err)
+		updateLog(lay, "update from the System panel failed: "+err.Error())
 	}
 	writeProgress(lay, p)
 }
@@ -183,7 +179,7 @@ func writeSysReport(lay layout, dir, web string) (string, error) {
 			_, _ = io.WriteString(w, web)
 		}
 	}
-	for _, n := range []string{"launcher.log", "system.log", sessionFile, updateProgressFile} {
+	for _, n := range []string{"launcher.log", "system.log", sessionFile, updateProgressFile, updateLogFile} {
 		b, err := os.ReadFile(filepath.Join(lay.data, n))
 		if err != nil {
 			continue
