@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 const testCommit = "5ea7e32af879112a67059f1b21fd51c766200e1b"
@@ -249,5 +251,42 @@ func TestPendingDebPicksNewest(t *testing.T) {
 	}
 	if triedBefore(lay, "0.3.0") || !triedBefore(lay, "0.3.0") {
 		t.Fatal("a version is offered once")
+	}
+}
+
+func TestNoteCheckRetriesSoonAfterAFailure(t *testing.T) {
+	d := t.TempDir()
+	lay := layout{root: d, data: d, updates: d, installed: true}
+	if !dueForCheck(lay) {
+		t.Fatal("first check not due")
+	}
+	noteCheck(lay, nil, nil)
+	if dueForCheck(lay) {
+		t.Fatal("a good check is followed by another one at once")
+	}
+	noteCheck(lay, errors.New("latest commit: 403 Forbidden"), nil)
+	st, err := os.Stat(filepath.Join(d, checkStamp))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if left := checkEvery - time.Since(st.ModTime()); left > retryAfter+time.Minute || left < retryAfter-time.Minute {
+		t.Fatalf("next check in %v, want about %v", left, retryAfter)
+	}
+	b, _ := os.ReadFile(filepath.Join(d, updateLogFile))
+	if !strings.Contains(string(b), "403 Forbidden") || strings.Count(string(b), "\n") != 2 {
+		t.Fatalf("update.log:\n%s", b)
+	}
+}
+
+func TestUpdateLogStaysSmall(t *testing.T) {
+	d := t.TempDir()
+	lay := layout{root: d, data: d, updates: d}
+	line := strings.Repeat("x", 200)
+	for i := 0; i < 1000; i++ {
+		updateLog(lay, line)
+	}
+	b, _ := os.ReadFile(filepath.Join(d, updateLogFile))
+	if len(b) > maxUpdateLog+300 || !strings.HasSuffix(string(b), line+"\n") {
+		t.Fatalf("update.log is %d bytes", len(b))
 	}
 }

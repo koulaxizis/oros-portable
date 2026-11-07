@@ -447,7 +447,7 @@ func sysStatus(lay layout, p platformOps) sysReply {
 			// Parts the extension shows; the rest stays hidden.
 			"sound": true, "screen": true, "power": true, "sleep": true,
 			"exit": true, "window": true, "report": true,
-			"update": !lay.installed,                             // installed copies update themselves
+			"update": true,                                       // installed copies too (sysupdate.go)
 			"web":    webBrowser(lay) != "",                      // the Internet window (sysweb.go)
 			"tor":    webBrowser(lay) != "" && torAvailable(lay), // tor.go
 			"ai":     aiAvailable(lay),                           // ai.go

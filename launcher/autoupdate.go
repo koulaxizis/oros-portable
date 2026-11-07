@@ -72,22 +72,76 @@ func checkUpdatesLater(lay layout) {
 		return
 	}
 	go func() {
-		if err := checkAppUpdate(lay); err != nil {
-			log.Printf("app update: %v", err)
+		appErr := checkAppUpdate(lay)
+		if appErr != nil {
+			log.Printf("app update: %v", appErr)
 		}
-		if err := checkProgramUpdate(lay); err != nil {
-			log.Printf("program update: %v", err)
+		progErr := checkProgramUpdate(lay)
+		if progErr != nil {
+			log.Printf("program update: %v", progErr)
 		}
+		noteCheck(lay, appErr, progErr)
 	}()
 }
 
+const (
+	checkStamp = "last-update-check"
+	// retryAfter: a check that failed (no network, GitHub refused, the
+	// download broke) is tried again this soon, not after checkEvery.
+	retryAfter = 30 * time.Minute
+	// updateLogFile keeps every check's outcome across starts:
+	// launcher.log starts empty with each window, so the reason an
+	// update did not arrive was lost (Chris 2026-11-07: an installed
+	// copy stayed on orOS 5.44.01 for two days with no trace).
+	updateLogFile = "update.log"
+	maxUpdateLog  = 64 << 10
+)
+
 func dueForCheck(lay layout) bool {
-	stamp := filepath.Join(lay.data, "last-update-check")
+	stamp := filepath.Join(lay.data, checkStamp)
 	if st, err := os.Stat(stamp); err == nil && time.Since(st.ModTime()) < checkEvery {
 		return false
 	}
 	_ = os.WriteFile(stamp, []byte(time.Now().UTC().Format(time.RFC3339)+"\n"), 0o644)
 	return true
+}
+
+// noteCheck writes the outcome to update.log and, when a part failed,
+// moves the stamp back so the next check comes after retryAfter.
+func noteCheck(lay layout, appErr, progErr error) {
+	line := "ok"
+	if appErr != nil || progErr != nil {
+		line = fmt.Sprintf("app: %v; program: %v", errText(appErr), errText(progErr))
+		back := time.Now().Add(retryAfter - checkEvery)
+		_ = os.Chtimes(filepath.Join(lay.data, checkStamp), back, back)
+	}
+	updateLog(lay, fmt.Sprintf("check (orOS %s, %s): %s", appVersion(lay.appDir()), shortSHA(appCommit(lay.appDir())), line))
+}
+
+func errText(err error) string {
+	if err == nil {
+		return "ok"
+	}
+	return err.Error()
+}
+
+// updateLog appends one line to update.log, keeping the newest half
+// once the file passes maxUpdateLog.
+func updateLog(lay layout, msg string) {
+	name := filepath.Join(lay.data, updateLogFile)
+	if b, err := os.ReadFile(name); err == nil && len(b) > maxUpdateLog {
+		b = b[len(b)-maxUpdateLog/2:]
+		if i := strings.IndexByte(string(b), '\n'); i >= 0 {
+			b = b[i+1:]
+		}
+		_ = os.WriteFile(name, b, 0o644)
+	}
+	f, err := os.OpenFile(name, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "%s %s\n", time.Now().Format("2006-01-02 15:04:05"), msg)
 }
 
 // --- the orOS web app ---
@@ -100,9 +154,13 @@ func applyStagedApp(lay layout) {
 		_ = os.RemoveAll(next)
 		return
 	}
+	ver := appVersion(next)
 	if err := swapApp(lay.updates, next); err != nil {
 		log.Printf("applying the downloaded orOS: %v", err)
+		updateLog(lay, "applying orOS "+ver+" failed: "+err.Error())
+		return
 	}
+	updateLog(lay, "orOS "+ver+" is now in use")
 }
 
 func checkAppUpdate(lay layout) error {
@@ -122,6 +180,7 @@ func checkAppUpdate(lay layout) error {
 		return err
 	}
 	log.Printf("downloaded orOS %s; it opens at the next start", appCommit(stagedAppDir(lay)))
+	updateLog(lay, "downloaded orOS "+appVersion(stagedAppDir(lay))+" ("+shortSHA(latest)+"); it opens at the next start")
 	return nil
 }
 
