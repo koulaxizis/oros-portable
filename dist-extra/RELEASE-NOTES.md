@@ -24,6 +24,8 @@ The installed orOS uses its own private browser (ungoogled-chromium), works offl
 
 **No "Save password?" from the browser:** orOS's browser no longer offers to save passwords, addresses or cards (it popped up over the sync passphrase); orOS Passwords keeps them.
 
+**Tray icon on Windows:** the installed orOS puts its icon in the tray every time you open it (click it to add a task or search, or press Ctrl+Alt+Shift+Space). Before, it appeared only with "Start with the computer" on, so it was gone after a restart or an update.
+
 **Users:** add people in orOS Settings › Users; each has their own orOS, password and Internet window, and there is an optional guest. Encrypting each user's files is optional and only on orOS Live USB.
 
 Also from free package managers: `scoop bucket add oros https://github.com/koulaxizis/oros-portable` and `scoop install oros`, or `winget install koulaxizis.orOS` (once the package is listed there). [Code signing policy](https://github.com/koulaxizis/oros-portable#code-signing-policy)

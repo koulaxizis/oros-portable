@@ -179,7 +179,7 @@ func writeSysReport(lay layout, dir, web string) (string, error) {
 			_, _ = io.WriteString(w, web)
 		}
 	}
-	for _, n := range []string{"launcher.log", "system.log", sessionFile, updateProgressFile, updateLogFile} {
+	for _, n := range []string{"launcher.log", trayLogFile, "system.log", sessionFile, updateProgressFile, updateLogFile} {
 		b, err := os.ReadFile(filepath.Join(lay.data, n))
 		if err != nil {
 			continue

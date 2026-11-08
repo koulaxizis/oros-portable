@@ -52,6 +52,7 @@ type trayApp struct {
 	srv      servers
 	opening  atomic.Bool
 	appImage time.Time // the AppImage file's time at start (self-replaced = newer)
+	quitting atomic.Bool
 	unlock   func()
 }
 
@@ -130,6 +131,7 @@ func (t *trayApp) ready() {
 					auto.Uncheck()
 				}
 			case <-quit.ClickedCh:
+				t.quitting.Store(true)
 				systray.Quit()
 				return
 			}
@@ -139,6 +141,12 @@ func (t *trayApp) ready() {
 }
 
 func (t *trayApp) exit() {
+	// Quit with an orOS window open: the icon is gone, but the server it
+	// gives that window stays until the window closes (a window opened
+	// while the tray served only opens the browser, runWindow).
+	for t.quitting.Load() && t.serving() && t.windowOpen() {
+		time.Sleep(2 * time.Second)
+	}
 	t.mu.Lock()
 	if t.srv != nil {
 		shutdown(t.srv)
@@ -168,6 +176,12 @@ func (t *trayApp) takeServer() bool {
 	startBridge(t.lay) // the bridge lives with the server (bridge.go)
 	startAI(t.lay)     // and the local AI (ai.go)
 	return true
+}
+
+func (t *trayApp) serving() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.srv != nil
 }
 
 func (t *trayApp) keepServer() {

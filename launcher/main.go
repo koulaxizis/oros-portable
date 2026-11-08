@@ -83,12 +83,12 @@ func main() {
 		stageUpdate(lay)
 		return
 	}
-	setupLog(lay.data)
-	defer unregisterHost()
 	cmd := ""
 	if len(os.Args) > 1 {
 		cmd = os.Args[1]
 	}
+	setupLog(lay.data, logName(cmd))
+	defer unregisterHost()
 	switch cmd {
 	case "", "run":
 		if lay.installed {
@@ -135,11 +135,20 @@ func rootDir() (string, error) {
 	return filepath.Dir(exe), nil
 }
 
-func setupLog(dir string) {
+// logName: the tray keeps a log of its own. It starts next to a window
+// (traystart.go), and a shared launcher.log would lose the window's lines.
+func logName(cmd string) string {
+	if cmd == "tray" {
+		return trayLogFile
+	}
+	return "launcher.log"
+}
+
+func setupLog(dir, name string) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return
 	}
-	f, err := os.OpenFile(filepath.Join(dir, "launcher.log"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	f, err := os.OpenFile(filepath.Join(dir, name), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
 		return
 	}
@@ -187,6 +196,7 @@ func runWindow(lay layout, appDir, url string, extra ...string) {
 	if err != nil {
 		return // claimPort told the user
 	}
+	startTrayAlongside(lay) // installed on Windows: the tray icon too (traystart.go)
 	if srv == nil {
 		log.Printf("server already running, opening a window only")
 		_ = runSession(lay, url, extra, launchBrowser)
