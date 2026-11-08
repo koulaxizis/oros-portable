@@ -57,6 +57,12 @@ func beforeStart(lay layout, tray bool) bool {
 	if alreadyRunning() {
 		return false
 	}
+	// A tray on Windows (traystart.go) runs orOS.exe from the folder the
+	// setup replaces, and serves the app folder: it applies both by
+	// itself while no window is open (maintain).
+	if !tray && trayHoldsProgram(lay) {
+		return false
+	}
 	if autoUpdatesOn(lay) && (runPendingSetup(lay, tray) || (isDebInstall(lay) && runPendingDeb(lay, tray))) {
 		return true
 	}
