@@ -152,7 +152,10 @@ func setupLog(dir, name string) {
 	if err != nil {
 		return
 	}
-	log.SetOutput(io.MultiWriter(os.Stderr, f))
+	// The file first: a Windows GUI build (-H=windowsgui) has no stderr,
+	// and MultiWriter stops at the first writer that fails, which left
+	// launcher.log empty on Windows.
+	log.SetOutput(io.MultiWriter(f, os.Stderr))
 }
 
 // appendLog is the log of the short runs (the native host, the update
