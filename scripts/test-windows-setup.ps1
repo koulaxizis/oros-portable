@@ -86,6 +86,27 @@ if ($hasBridge) {
   Write-Host 'ok: the tray runs the bundled orOS Bridge'
 }
 
+# Opening orOS (the Start menu entry: a window) brings the tray icon back
+# when none runs (launcher/traystart.go), and the tray keeps its own log.
+Stop-Process -Id $tray.Id -Force
+for ($i = 0; $i -lt 15; $i++) {
+  try { Invoke-WebRequest http://localhost:47800/ -UseBasicParsing -TimeoutSec 2 | Out-Null; Start-Sleep 1 } catch { break }
+}
+$win = Start-Process (Join-Path $app 'orOS.exe') -PassThru
+$ok = $false
+for ($i = 0; $i -lt 45 -and -not $ok; $i++) {
+  Start-Sleep 1
+  $ok = (Select-String -Path (Join-Path $data 'launcher.log') -Pattern 'tray started beside the window' -Quiet -ErrorAction SilentlyContinue) -and
+    (Test-Path (Join-Path $data 'tray.log'))
+}
+if (-not $ok) { Get-Content (Join-Path $data 'launcher.log') -ErrorAction SilentlyContinue; throw 'opening orOS did not start the tray' }
+$second = Start-Process (Join-Path $app 'orOS.exe') -ArgumentList 'tray' -PassThru
+if (-not $second.WaitForExit(15000)) { throw 'the tray beside the window did not hold its lock' }
+Write-Host 'ok: opening orOS starts the tray icon too'
+# The window's browser goes first, so the uninstaller can remove browser\.
+Get-Process chrome -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$app\*" } | Stop-Process -Force
+Start-Sleep 2
+
 $u = Start-Process (Join-Path $app 'unins000.exe') -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
 if ($u.ExitCode) { throw "uninstall exited with $($u.ExitCode)" }
 # The uninstaller finishes in a copy of itself, so wait for the files to go.
@@ -94,6 +115,7 @@ if (Test-Path (Join-Path $app 'orOS.exe')) { throw 'orOS.exe is still there afte
 if (Test-Path $menu) { throw 'the Start menu entry is still there after uninstall' }
 if ((Get-ItemProperty $runKey -ErrorAction SilentlyContinue).orOS) { throw 'the Run value is still there after uninstall' }
 if (-not $tray.HasExited) { throw 'the uninstaller left the tray running' }
+if (Get-Process orOS -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$app\*" }) { throw 'the uninstaller left orOS.exe running' }
 if ($hasBridge) {
   for ($i = 0; $i -lt 10 -and (Get-Process oros-bridge -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $bridge }); $i++) { Start-Sleep 1 }
   if (Get-Process oros-bridge -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $bridge }) { throw 'the bundled bridge outlived the tray' }

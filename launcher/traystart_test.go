@@ -26,7 +26,14 @@ func TestTrayStartsBesideTheWindow(t *testing.T) {
 	if startTrayAlongside(lay) {
 		t.Fatal("a second tray was started")
 	}
+	// A window start leaves a pending setup to the running tray.
+	if !trayHoldsProgram(lay) {
+		t.Fatal("running tray not seen")
+	}
 	unlock()
+	if trayHoldsProgram(lay) {
+		t.Fatal("no tray runs")
+	}
 
 	// Portable copies, other systems and OROS_NO_TRAY start none.
 	if startTrayAlongside(layout{data: t.TempDir()}) {

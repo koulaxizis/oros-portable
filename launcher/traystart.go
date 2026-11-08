@@ -33,6 +33,19 @@ var (
 	}
 )
 
+// trayHoldsProgram reports a running tray of an installed copy on
+// Windows, which the setup would have to close under itself.
+func trayHoldsProgram(lay layout) bool {
+	if !lay.installed || !trayAlongsideOS {
+		return false
+	}
+	unlock, free := lockTray(lay.data)
+	if free {
+		unlock()
+	}
+	return !free
+}
+
 // startTrayAlongside starts "orOS tray" as a process of its own, so it
 // stays when the window's launcher ends. A tray that runs already holds
 // tray.lock and is left alone.
