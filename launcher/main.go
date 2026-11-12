@@ -58,6 +58,7 @@ func main() {
 	if isHostCall(os.Args) {
 		// Chromium started the launcher as the System extension's host.
 		appendLog(lay.data)
+		hostParentWindow = parentWindowArg(os.Args)
 		if err := runSysHost(lay, os.Stdin, os.Stdout); err != nil {
 			log.Printf("system host: %v", err)
 		}

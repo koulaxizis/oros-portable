@@ -283,6 +283,10 @@ type sysRequest struct {
 	// Report a problem, already shown to the person); it goes into the
 	// zip as oros.txt.
 	Web string `json:"web,omitempty"`
+	// Screen lock with Windows Hello or a fingerprint (lockbio.go): the
+	// page's id for its record and the line the prompt shows.
+	Kid  string `json:"kid,omitempty"`
+	Text string `json:"text,omitempty"`
 }
 
 type sysReply map[string]any
@@ -431,6 +435,8 @@ func handleSys(lay layout, req sysRequest) sysReply {
 		return removeTor(lay)
 	case "ai.status", "ai.start", "ai.install", "ai.forget", "ai.gpu", "ai.remove":
 		return aiHost(lay, req)
+	case "bio.state", "bio.seal", "bio.open", "bio.clear":
+		return bioHost(lay, req)
 	}
 	return sysFail(errUnsupported)
 }
@@ -451,6 +457,7 @@ func sysStatus(lay layout, p platformOps) sysReply {
 			"web":    webBrowser(lay) != "",                      // the Internet window (sysweb.go)
 			"tor":    webBrowser(lay) != "" && torAvailable(lay), // tor.go
 			"ai":     aiAvailable(lay),                           // ai.go
+			"bio":    bioPlatform.kind() != "",                   // lockbio.go
 		},
 	}
 	if v, m, ok := p.volume(); ok {
