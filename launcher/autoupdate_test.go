@@ -278,6 +278,35 @@ func TestNoteCheckRetriesSoonAfterAFailure(t *testing.T) {
 	}
 }
 
+func TestBrokenCheckIsTriedAgainSoon(t *testing.T) {
+	saved := quickRetries
+	defer func() { quickRetries = saved }()
+	quickRetries = []time.Duration{time.Millisecond, time.Millisecond}
+
+	calls := 0
+	err := withRetries("test", func() error {
+		calls++
+		if calls < 3 {
+			return errors.New("wsarecv: an established connection was aborted")
+		}
+		return nil
+	})
+	if err != nil || calls != 3 {
+		t.Fatalf("err %v after %d calls, want success on the third", err, calls)
+	}
+
+	calls = 0
+	err = withRetries("test", func() error { calls++; return errors.New("down") })
+	if err == nil || calls != 3 {
+		t.Fatalf("err %v after %d calls, want failure after 3", err, calls)
+	}
+
+	calls = 0
+	if err := withRetries("test", func() error { calls++; return nil }); err != nil || calls != 1 {
+		t.Fatalf("a good check ran %d times", calls)
+	}
+}
+
 func TestUpdateLogStaysSmall(t *testing.T) {
 	d := t.TempDir()
 	lay := layout{root: d, data: d, updates: d}

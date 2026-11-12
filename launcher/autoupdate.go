@@ -78,16 +78,35 @@ func checkUpdatesLater(lay layout) {
 		return
 	}
 	go func() {
-		appErr := checkAppUpdate(lay)
-		if appErr != nil {
-			log.Printf("app update: %v", appErr)
-		}
-		progErr := checkProgramUpdate(lay)
-		if progErr != nil {
-			log.Printf("program update: %v", progErr)
-		}
+		appErr := withRetries("app update", func() error { return checkAppUpdate(lay) })
+		progErr := withRetries("program update", func() error { return checkProgramUpdate(lay) })
 		noteCheck(lay, appErr, progErr)
 	}()
+}
+
+// quickRetries: a check that breaks is tried again after these waits
+// before it counts as failed (retryAfter). On Chris's PC the first check
+// after a start broke on four days out of five (2026-11-09..12: "an
+// established connection was aborted" in the middle of the download),
+// and with the 30-minute retry the new orOS came only after he had
+// closed the window that evening, so the PC stayed a day behind.
+var quickRetries = []time.Duration{time.Minute, 3 * time.Minute}
+
+// withRetries runs fn, and again after each of quickRetries while it fails.
+func withRetries(what string, fn func() error) error {
+	err := fn()
+	for _, wait := range quickRetries {
+		if err == nil {
+			return nil
+		}
+		log.Printf("%s: %v (trying again in %v)", what, err, wait)
+		time.Sleep(wait)
+		err = fn()
+	}
+	if err != nil {
+		log.Printf("%s: %v", what, err)
+	}
+	return err
 }
 
 const (
