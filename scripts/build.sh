@@ -68,6 +68,10 @@ ls "$FULL/system/manifest.json" "$FULL/system/content.js" >/dev/null
 # uBlock Origin Lite for the Internet window (launcher/sysweb.go), with
 # orOS USB's own script: checked against the release's SHA-256.
 UBOL="$(sh "$(find "$TMP" -maxdepth 3 -type f -path '*/scripts/ubol.sh' | head -1)" "$FULL/ubol" | tail -1)"
+# chromium-web-store: "Add to Chromium" on the Chrome Web Store and update
+# checks for what came from there (launcher/extpolicy.go), checked against
+# the release's SHA-256. Needs jq.
+WEBSTORE="$(sh "$ROOT/scripts/webstore.sh" "$FULL/webstore" | tail -1)"
 # The orOS add-on (Passwords fill and save in the Internet window, which
 # opens in orOS's profile: launcher/sysweb.go), from the same orOS commit
 # as app/, with orOS USB's own script presetting its address to the
@@ -137,6 +141,7 @@ echo "== licences and sources"
 printf '%s\n' "" "Full edition and installers also carry:" \
   "  system/  orOS USB System extension (MIT), https://github.com/koulaxizis/oros-usb/tree/$USB_COMMIT/system/extension" \
   "  ubol/    ${UBOL%% ->*} (GPL-3.0), https://github.com/uBlockOrigin/uBOL-home/releases" \
+  "  webstore/ ${WEBSTORE%% ->*} (MIT), https://github.com/NeverDecaf/chromium-web-store/releases" \
   "  addon/   $ADDON (MIT), https://github.com/koulaxizis/oros/tree/$OROS_COMMIT/extension, its address preset to this launcher" \
   "  tor-browser-developers.gpg  Tor Browser's public signing key (EF6E 286D DA85 EA2A 4BA7 DE68 4E2C 6E87 9329 8290)," \
   "    for the Tor button; Tor Browser itself is not carried, the button downloads it from torproject.org" >> "$OUT/SOURCES.txt"
@@ -181,6 +186,7 @@ curl -fsSL --retry 3 "https://raw.githubusercontent.com/ungoogled-software/ungoo
 curl -fsSL --retry 3 "https://chromium.googlesource.com/chromium/src/+/refs/tags/$CHROMIUM/LICENSE?format=TEXT" |
   base64 -d > "$FULL/LICENSES/Chromium-BSD.txt"
 grep -q "Copyright" "$FULL/LICENSES/Chromium-BSD.txt"
+cp "$FULL/webstore/LICENSE" "$FULL/LICENSES/chromium-web-store-MIT.txt"
 printf '%s\n' "The complete list of the open-source components inside the browser, with" \
   "their licences, is built into it: open chrome://credits in the bundled browser." \
   > "$FULL/LICENSES/Chromium-components.txt"
