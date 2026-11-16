@@ -74,6 +74,11 @@ func main() {
 		appendLog(lay.data)
 		os.Exit(torMain(lay, os.Args[2:]))
 	}
+	if len(os.Args) > 1 && os.Args[1] == "claude" {
+		// Claude desktop's download (claude.go).
+		appendLog(lay.data)
+		os.Exit(claudeMain(lay, os.Args[2:]))
+	}
 	if len(os.Args) > 1 && os.Args[1] == "ai" {
 		// The local AI's download, start or stop (ai.go).
 		appendLog(lay.data)

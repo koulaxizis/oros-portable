@@ -438,6 +438,8 @@ func handleSys(lay layout, req sysRequest) sysReply {
 		return torStatus(lay)
 	case "tor.remove":
 		return removeTor(lay)
+	case "claude.status", "claude.install", "claude.open", "claude.remove":
+		return claudeHost(lay, req.Cmd)
 	case "ai.status", "ai.start", "ai.install", "ai.forget", "ai.gpu", "ai.remove":
 		return aiHost(lay, req)
 	case "bio.state", "bio.seal", "bio.open", "bio.clear":
@@ -462,6 +464,7 @@ func sysStatus(lay layout, p platformOps) sysReply {
 			"web":    webBrowser(lay) != "",                      // the Internet window (sysweb.go)
 			"tor":    webBrowser(lay) != "" && torAvailable(lay), // tor.go
 			"ai":     aiAvailable(lay),                           // ai.go
+			"claude": claudeAvailable(lay),                       // claude.go
 			"bio":    bioPlatform.kind() != "",                   // lockbio.go
 		},
 	}
