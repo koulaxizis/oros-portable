@@ -2,19 +2,24 @@
 
 **EN** · [ΕΛ](#ιδιωτική-περιήγηση-με-το-oros-portable)
 
-Your internet provider can see which sites you visit. A **VPN browser extension** hides that for one browser only, while orOS (sync, Mail and the other apps) keeps using your normal connection. orOS does not include or recommend a VPN provider; pick one yourself.
+Your internet provider can see which sites you visit. A **VPN browser extension** hides that. orOS does not include or recommend a VPN provider; pick one yourself and use your own account with it.
 
 ## Where it goes
 
-Put the extension in the computer's **own browser** (for example Brave, Chromium, Edge, Chrome or Firefox), not in the orOS window. The orOS window opens without a toolbar, and the full edition's ungoogled-chromium does not install from extension stores directly. Keeping the VPN out of orOS also keeps sync and the other apps on your normal connection.
+- **Full edition and the installed orOS:** in the **Internet** window (Quick settings › Internet). It is the same browser as orOS, so while the extension is connected orOS's own traffic (sync, Mail and the other apps) goes through it too.
+- **Lite edition:** in the computer's own browser (for example Brave, Chromium, Edge, Chrome or Firefox), where orOS also runs.
 
-## Steps
+## Steps (full edition and installed orOS)
 
-1. Open the computer's own browser.
-2. Open its extension store and install the extension of the VPN provider you chose. Check the publisher name, because copies with similar names exist.
-3. Pin it to the toolbar.
-4. Sign in or create an account with the provider, then connect.
-5. Check it: open a DNS leak test page. It should show the provider's servers, not your internet provider.
+1. Open **Internet**.
+2. Go to the Chrome Web Store (chromewebstore.google.com) and open the page of the VPN provider's extension. Check the publisher name, because copies with similar names exist.
+3. Press **Add to Chromium** and confirm with **Add extension**. (The button comes from the built-in "Chromium Web Store" helper, because this privacy-focused Chromium has no store connection of its own. The browser contacts Google only when you install or update something from the store.)
+4. Pin it: the puzzle icon at the top right › pin.
+5. Sign in or create an account with the provider, then connect.
+6. Check it: open a DNS leak test page. It should show the provider's servers, not your internet provider.
+7. Updates: the helper's icon shows a number when an extension has a new version; press it and choose the extension to update it.
+
+In the lite edition use your browser's own extension store, steps 2 and 4 to 6.
 
 ## Choosing a provider
 
@@ -37,6 +42,7 @@ Next to **Internet** at the top of orOS, the **Tor** button opens the official T
 ## Good to know
 
 - Only the browser with the extension is covered. Streams opened inside orOS (Television, Radio) use your normal connection.
+- On Windows, extensions you add cannot read or change orOS's own pages (a Chromium policy that orOS sets keeps every extension except orOS's own away from them), so a VPN extension never sees your unlocked notes or passwords. On Linux this protection needs a system setting a stick cannot make: add only extensions you trust, from publishers you know.
 - A browser extension is a proxy, not a full VPN. Before you press Connect, or if the connection drops, the browser uses your normal connection. Check the icon first.
 - For really sensitive searches, Tor Browser (the Tor button above) hides more than a VPN, but it is too slow for video. Your internet provider can see that you use Tor.
 - A private (incognito) window hides nothing from your internet provider; it only keeps no history on the computer.
@@ -47,19 +53,24 @@ Next to **Internet** at the top of orOS, the **Tor** button opens the official T
 
 [EN](#private-browsing-with-oros-portable) · **ΕΛ**
 
-Ο πάροχος internet σου βλέπει ποιες σελίδες επισκέπτεσαι. Ένα **VPN extension για τον browser** το κρύβει μόνο για έναν browser, ενώ το orOS (sync, Mail και οι άλλες εφαρμογές) συνεχίζει με την κανονική σου σύνδεση. Το orOS δεν περιέχει ούτε προτείνει πάροχο VPN· διαλέγεις εσύ.
+Ο πάροχος internet σου βλέπει ποιες σελίδες επισκέπτεσαι. Ένα **VPN extension για τον browser** το κρύβει. Το orOS δεν περιέχει ούτε προτείνει πάροχο VPN· διαλέγεις εσύ και χρησιμοποιείς τον δικό σου λογαριασμό.
 
 ## Πού μπαίνει
 
-Βάλε το extension στον **κανονικό browser του υπολογιστή** (π.χ. Brave, Chromium, Edge, Chrome ή Firefox), όχι στο παράθυρο του orOS. Το παράθυρο του orOS ανοίγει χωρίς γραμμή εργαλείων, και το ungoogled-chromium της πλήρους έκδοσης δεν εγκαθιστά απευθείας από καταστήματα extensions. Έτσι το sync και οι άλλες εφαρμογές μένουν στην κανονική σου σύνδεση.
+- **Πλήρης έκδοση και εγκατεστημένο orOS:** στο παράθυρο **Internet** (Γρήγορες ρυθμίσεις › Internet). Είναι ο ίδιος browser με το orOS, οπότε όσο το extension είναι συνδεδεμένο περνά από αυτό και η κίνηση του ίδιου του orOS (sync, Mail και οι άλλες εφαρμογές).
+- **Έκδοση Lite:** στον κανονικό browser του υπολογιστή (π.χ. Brave, Chromium, Edge, Chrome ή Firefox), όπου τρέχει και το orOS.
 
-## Βήματα
+## Βήματα (πλήρης έκδοση και εγκατεστημένο orOS)
 
-1. Άνοιξε τον κανονικό browser του υπολογιστή.
-2. Άνοιξε το κατάστημα extensions και εγκατάστησε το extension του παρόχου VPN που διάλεξες. Έλεγξε το όνομα του εκδότη, γιατί υπάρχουν αντίγραφα με παρόμοια ονόματα.
-3. Καρφίτσωσέ το στη γραμμή εργαλείων.
-4. Συνδέσου ή φτιάξε λογαριασμό στον πάροχο και πάτα σύνδεση.
-5. Έλεγξέ το: άνοιξε μια σελίδα DNS leak test. Πρέπει να δείχνει τους servers του παρόχου, όχι τον πάροχο internet σου.
+1. Άνοιξε το **Internet**.
+2. Πήγαινε στο Chrome Web Store (chromewebstore.google.com) και άνοιξε τη σελίδα του extension του παρόχου VPN. Έλεγξε το όνομα του εκδότη, γιατί υπάρχουν αντίγραφα με παρόμοια ονόματα.
+3. Πάτα **Add to Chromium** και επιβεβαίωσε με **Add extension**. (Το κουμπί το βάζει ο ενσωματωμένος βοηθός «Chromium Web Store», γιατί αυτός ο Chromium, φτιαγμένος για ιδιωτικότητα, δεν έχει δική του σύνδεση με το κατάστημα. Ο browser μιλά με τη Google μόνο όταν εγκαθιστάς ή ενημερώνεις κάτι από το κατάστημα.)
+4. Καρφίτσωσέ το: το εικονίδιο με το κομμάτι παζλ πάνω δεξιά › καρφίτσωμα.
+5. Συνδέσου ή φτιάξε λογαριασμό στον πάροχο και πάτα σύνδεση.
+6. Έλεγξέ το: άνοιξε μια σελίδα DNS leak test. Πρέπει να δείχνει τους servers του παρόχου, όχι τον πάροχο internet σου.
+7. Ενημερώσεις: το εικονίδιο του βοηθού δείχνει αριθμό όταν ένα extension έχει νέα έκδοση· πάτα το και διάλεξε το extension για να ενημερωθεί.
+
+Στην έκδοση Lite χρησιμοποίησε το κατάστημα extensions του browser σου, βήματα 2 και 4 έως 6.
 
 ## Πώς διαλέγεις πάροχο
 
@@ -82,6 +93,7 @@ Next to **Internet** at the top of orOS, the **Tor** button opens the official T
 ## Καλό να ξέρεις
 
 - Καλύπτεται μόνο ο browser με το extension. Ό,τι ανοίγει μέσα στο orOS (Television, Radio) περνά από την κανονική σου σύνδεση.
+- Στα Windows, τα extensions που προσθέτεις δεν μπορούν να διαβάσουν ή να αλλάξουν τις σελίδες του ίδιου του orOS (μια πολιτική του Chromium που βάζει το orOS κρατά μακριά τους όλα τα extensions εκτός από τα δικά του orOS), οπότε ένα VPN extension δεν βλέπει ποτέ τις ξεκλείδωτες σημειώσεις ή τους κωδικούς σου. Στο Linux αυτή η προστασία θέλει ρύθμιση συστήματος που ένα stick δεν μπορεί να κάνει: βάλε μόνο extensions που εμπιστεύεσαι, από εκδότες που ξέρεις.
 - Ένα extension είναι proxy, όχι πλήρες VPN. Πριν πατήσεις σύνδεση, ή αν πέσει η σύνδεση, ο browser βγαίνει από την κανονική σου σύνδεση. Κοίτα πρώτα το εικονίδιο.
 - Για πραγματικά ευαίσθητες αναζητήσεις, το Tor Browser (το κουμπί Tor πιο πάνω) κρύβει περισσότερα από ένα VPN, αλλά είναι πολύ αργό για βίντεο. Ο πάροχος internet βλέπει ότι χρησιμοποιείς Tor.
 - Ένα ιδιωτικό (incognito) παράθυρο δεν κρύβει τίποτα από τον πάροχο internet· απλώς δεν κρατά ιστορικό στον υπολογιστή.

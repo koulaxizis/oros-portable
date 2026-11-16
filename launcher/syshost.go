@@ -64,11 +64,11 @@ func sysExtDir(lay layout) string {
 // the bundled browser loads, in this order: the System extension, the
 // orOS add-on (Passwords fill and save on web pages, its orOS address
 // preset to this launcher's by oros-usb scripts/addon.sh) and uBlock
-// Origin Lite. The Internet window opens in the same profile (sysweb.go),
+// Origin Lite, and chromium-web-store (extpolicy.go). The Internet window opens in the same profile (sysweb.go),
 // so the add-on there reaches orOS. The lite edition has none.
 func bundledExtensions(lay layout) []string {
 	var out []string
-	for _, name := range []string{sysExtFolder, addonDir, ubolDir} {
+	for _, name := range []string{sysExtFolder, addonDir, ubolDir, webstoreDir} {
 		d := filepath.Join(lay.root, name)
 		if _, err := os.Stat(filepath.Join(d, "manifest.json")); err != nil {
 			continue
@@ -206,7 +206,11 @@ func sysBrowserArgs(lay layout, c candidate, url string) []string {
 	if sysExtDir(lay) != "" {
 		registerHostOnce(lay, c.profile)
 	}
+	applyExtPolicyOnce(lay)
 	args := []string{"--load-extension=" + strings.Join(ext, ",")}
+	if webstoreHere(lay) {
+		args = append(args, mimeFlag)
+	}
 	if url == appURL && loadSession(lay).Fullscreen {
 		args = append(args, "--start-fullscreen")
 	}
@@ -252,6 +256,7 @@ func unregisterHost() {
 	}
 	hostCleanup = nil
 	hostDone = map[string]bool{}
+	policyDone = false
 }
 
 // hostManifest is the native messaging manifest that points Chromium at

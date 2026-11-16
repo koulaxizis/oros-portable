@@ -12,8 +12,9 @@ package main
 //     repository read like apt, signature pinned by fingerprint, the .deb
 //     unpacked into ~/.local/share/oros-claude without root
 //     (claude_other.go).
-// The guest gets none. "orOS claude --fetch" does the work in a launcher
-// of its own, because Chromium ends the host as soon as it has answered.
+// The guest gets none. "orOS claude --fetch" and "orOS claude --open" do
+// the work in a launcher of their own, because Chromium ends the host as
+// soon as it has answered; both place Claude beside orOS (claude_side.go).
 
 import (
 	"encoding/json"
@@ -82,7 +83,12 @@ func claudeHost(lay layout, cmd string) sysReply {
 		}
 		return ok(sysReply{"running": true})
 	case "claude.open":
-		if err := claudeStart(); err != nil {
+		if claudeVersion() == "" {
+			return sysFail(errors.New("Claude desktop is not installed"))
+		}
+		// A launcher of its own opens it and places it beside orOS, since
+		// this host ends as soon as it has answered.
+		if err := claudeSelf("claude", "--open"); err != nil {
 			return sysFail(err)
 		}
 		return ok(sysReply{"started": true})
@@ -102,16 +108,25 @@ func claudeHost(lay layout, cmd string) sysReply {
 // claudeMain is "orOS claude --fetch --progress F --lock L".
 func claudeMain(lay layout, args []string) int {
 	fl := flag.NewFlagSet("claude", flag.ContinueOnError)
-	var fetch, noStart bool
+	var fetch, open, noStart bool
 	progress := claudeProgressFile(lay)
 	lock := claudeLock(lay)
 	fl.BoolVar(&fetch, "fetch", false, "download and install Anthropic's Claude desktop")
+	fl.BoolVar(&open, "open", false, "start Claude desktop beside orOS")
 	fl.BoolVar(&noStart, "no-start", false, "do not start Claude desktop afterwards")
 	fl.StringVar(&progress, "progress", progress, "progress file (JSON)")
 	fl.StringVar(&lock, "lock", lock, "lock file held while downloading")
-	if err := fl.Parse(args); err != nil || !fetch {
-		fmt.Fprintln(os.Stderr, "usage: orOS claude --fetch [--no-start]")
+	if err := fl.Parse(args); err != nil || fetch == open {
+		fmt.Fprintln(os.Stderr, "usage: orOS claude --fetch [--no-start] | --open")
 		return 2
+	}
+	if open {
+		if err := claudeStart(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		claudeBeside(lay)
+		return 0
 	}
 	unlock, okLock := lockFile(lock)
 	if !okLock {
@@ -131,5 +146,8 @@ func claudeMain(lay layout, args []string) int {
 		return 1
 	}
 	report(torState{Step: "done", Percent: 100, Done: true})
+	if !noStart {
+		claudeBeside(lay)
+	}
 	return 0
 }
