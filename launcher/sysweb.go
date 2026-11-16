@@ -63,6 +63,9 @@ func webArgs(lay layout) []string {
 	if ext := bundledExtensions(lay); len(ext) > 0 {
 		args = append(args, "--load-extension="+strings.Join(ext, ","))
 	}
+	if webstoreHere(lay) {
+		args = append(args, mimeFlag)
+	}
 	args = joinExtensions(append(args, extraArgs()...)) // OROS_PORTABLE_BROWSER_ARGS, as for orOS's window
 	return append(args, webHome(lay))
 }

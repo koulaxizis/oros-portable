@@ -29,6 +29,8 @@ stage() { # stage <dest> <os: linux|windows>
   cp -r "$FULL/browser/$os" "$dest/browser/$os"
   if [ -d "$FULL/system" ]; then cp -r "$FULL/system" "$dest/"; fi
   if [ -d "$FULL/ubol" ]; then cp -r "$FULL/ubol" "$dest/"; fi
+  # chromium-web-store for the Chrome Web Store (launcher/extpolicy.go)
+  if [ -d "$FULL/webstore" ]; then cp -r "$FULL/webstore" "$dest/"; fi
   # The orOS add-on for the Internet window (launcher/sysweb.go)
   if [ -d "$FULL/addon" ]; then cp -r "$FULL/addon" "$dest/"; fi
   # Tor Browser's signing key (launcher/tor.go)
