@@ -54,8 +54,9 @@ type trayApp struct {
 	appImage time.Time // the AppImage file's time at start (self-replaced = newer)
 	quitting atomic.Bool
 	unlock   func()
-	barBusy  atomic.Bool   // openBar runs (deskbar.go)
-	barStop  chan struct{} // closes the running dockBar; under mu
+	gate     *gateHostRunner // the background orOS for orOS Gate (gatehost.go)
+	barBusy  atomic.Bool     // openBar runs (deskbar.go)
+	barStop  chan struct{}   // closes the running dockBar; under mu
 }
 
 func runTray(lay layout) {
@@ -74,7 +75,10 @@ func runTray(lay layout) {
 		unlock()
 		return // the setup of a new version takes over and starts the tray again
 	}
-	t := &trayApp{lay: lay, unlock: unlock}
+	t := &trayApp{lay: lay, unlock: unlock, gate: newGateHostRunner(lay)}
+	if gateAPI != nil {
+		gateAPI.running = t.gate.running
+	}
 	t.dir.Store(lay.appDir())
 	if img := os.Getenv("APPIMAGE"); img != "" {
 		if st, err := os.Stat(img); err == nil {
@@ -170,6 +174,7 @@ func (t *trayApp) ready() {
 		}
 	}()
 	go t.maintain()
+	go t.gate.loop(t.opening.Load)
 }
 
 func (t *trayApp) exit() {
@@ -179,6 +184,8 @@ func (t *trayApp) exit() {
 	for t.quitting.Load() && t.serving() && t.windowOpen() {
 		time.Sleep(2 * time.Second)
 	}
+	close(t.gate.stop)
+	t.gate.halt()
 	t.mu.Lock()
 	if t.srv != nil {
 		shutdown(t.srv)
@@ -335,8 +342,11 @@ func (t *trayApp) switchUser() {
 }
 
 // windowOpen: a browser has an orOS profile in use (any user's, or the
-// sign-in window).
+// sign-in window), other than the background orOS of this tray.
 func (t *trayApp) windowOpen() bool {
+	if t.gate != nil && t.gate.running() {
+		return false // the profile is the background orOS's (no window can share it)
+	}
 	return anyProfileInUse(t.lay.data)
 }
 
@@ -358,6 +368,7 @@ func (t *trayApp) maintain() {
 		if !serving || t.windowOpen() || t.opening.Load() || !autoUpdatesOn(t.lay) {
 			continue
 		}
+		t.gate.halt() // a new orOS: the background one starts again on it
 		applyStagedApp(t.lay)
 		t.dir.Store(t.lay.appDir())
 		if t.newProgram() {
@@ -402,6 +413,7 @@ func (t *trayApp) newProgram() bool {
 
 // release lets the next tray start: no server, no lock.
 func (t *trayApp) release() {
+	t.gate.halt()
 	t.mu.Lock()
 	if t.srv != nil {
 		shutdown(t.srv)

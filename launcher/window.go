@@ -49,6 +49,10 @@ func quickArgs() []string {
 // window is marked maximised while no browser holds the profile (a
 // running browser keeps its own copy and writes it back).
 func windowArgs(profile, url string, extra []string) []string {
+	// A window and the background orOS cannot share the profile: the
+	// background one goes first (gatehost.go).
+	gateHostYield(filepath.Dir(profile))
+	url = gateHostURL(filepath.Dir(profile), url)
 	if !profileInUse(profile) {
 		if err := seedMaximized(profile); err != nil {
 			log.Printf("window placement: %v", err)

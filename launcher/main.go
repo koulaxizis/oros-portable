@@ -334,6 +334,14 @@ func newDirHandler(dir func() string) http.Handler {
 			usersAPI.ServeHTTP(w, r)
 			return
 		}
+		if r.URL.Path == gateHostPath {
+			if gateAPI == nil {
+				http.NotFound(w, r)
+				return
+			}
+			gateAPI.ServeHTTP(w, r)
+			return
+		}
 		if strings.HasPrefix(r.URL.Path, fsPrefix) {
 			if fsAPI == nil {
 				http.NotFound(w, r)
