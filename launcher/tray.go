@@ -55,6 +55,8 @@ type trayApp struct {
 	quitting atomic.Bool
 	unlock   func()
 	gate     *gateHostRunner // the background orOS for orOS Gate (gatehost.go)
+	barBusy  atomic.Bool     // openBar runs (deskbar.go)
+	barStop  chan struct{}   // closes the running dockBar; under mu
 }
 
 func runTray(lay layout) {
@@ -111,13 +113,42 @@ func (t *trayApp) ready() {
 			time.Sleep(10 * time.Second)
 		}
 	}()
+	var bar *systray.MenuItem
+	if deskbarSupported {
+		bar = systray.AddMenuItemCheckbox(word("Smart bar on the desktop", "Έξυπνη γραμμή στην επιφάνεια εργασίας",
+			"Smarte Leiste auf dem Desktop"), "", deskbarOn(t.lay.data))
+	}
 	systray.AddSeparator()
 	auto := systray.AddMenuItemCheckbox(word("Start with the computer", "Εκκίνηση με τον υπολογιστή", "Mit dem Computer starten"), "", autostartOn())
 	systray.AddSeparator()
 	quit := systray.AddMenuItem(word("Quit", "Έξοδος", "Beenden"), "")
+	barClicks := make(chan struct{})
+	if bar != nil {
+		go func() {
+			for range bar.ClickedCh {
+				barClicks <- struct{}{}
+			}
+		}()
+	}
+	openMain = func(app string) { t.open(mainURLFor(app)) }
+	if deskbarOn(t.lay.data) {
+		go t.openBar()
+	}
 	go func() {
 		for {
 			select {
+			case <-barClicks:
+				on := !deskbarOn(t.lay.data)
+				if err := setDeskbar(t.lay.data, on); err != nil {
+					logBar("%v", err)
+				}
+				if on {
+					bar.Check()
+					go t.openBar()
+				} else {
+					bar.Uncheck()
+					t.closeBar()
+				}
 			case <-quick.ClickedCh:
 				t.openQuick()
 			case <-open.ClickedCh:
@@ -136,6 +167,7 @@ func (t *trayApp) ready() {
 				}
 			case <-quit.ClickedCh:
 				t.quitting.Store(true)
+				t.closeBar() // the bar would keep the server waiting (exit)
 				systray.Quit()
 				return
 			}
@@ -200,6 +232,75 @@ func (t *trayApp) keepServer() {
 
 func (t *trayApp) openQuick() { t.open(quickURL, quickArgs()...) }
 
+// openBar opens the desktop bar (deskbar.go) once the server is up and
+// docks it; again after it closes while the setting is on and the tray
+// runs (a browser that quit, a sign-out), at most every 30 s.
+func (t *trayApp) openBar() {
+	if !deskbarSupported || !t.barBusy.CompareAndSwap(false, true) {
+		return
+	}
+	defer t.barBusy.Store(false)
+	for deskbarOn(t.lay.data) && !t.quitting.Load() {
+		if t.serving() {
+			if ul, ok := barLayout(t.lay); ok {
+				stop := make(chan struct{})
+				t.mu.Lock()
+				t.barStop = stop
+				t.mu.Unlock()
+				if err := startBrowser(ul, barURL, barArgs()...); err != nil {
+					logBar("%v", err)
+				} else {
+					dockBar(stop)
+				}
+				t.mu.Lock()
+				if t.barStop == stop {
+					t.barStop = nil
+				}
+				t.mu.Unlock()
+			}
+		}
+		time.Sleep(30 * time.Second)
+	}
+}
+
+func (t *trayApp) barOpen() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.barStop != nil
+}
+
+// updateWaiting: a downloaded orOS or a new program waits for no window.
+func (t *trayApp) updateWaiting() bool {
+	if _, err := os.Stat(stagedAppDir(t.lay)); err == nil {
+		return true
+	}
+	if runtime.GOOS == "windows" {
+		if setup, _ := pendingSetup(t.lay); setup != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// closeBarFor closes the bar window and waits d for the browser to let
+// the profile go.
+func (t *trayApp) closeBarFor(d time.Duration) {
+	t.closeBar()
+	time.Sleep(d)
+}
+
+// closeBar: the setting went off. The window closes and its space is
+// given back.
+func (t *trayApp) closeBar() {
+	t.mu.Lock()
+	if t.barStop != nil {
+		close(t.barStop)
+		t.barStop = nil
+	}
+	t.mu.Unlock()
+	closeBar()
+}
+
 // open starts a browser window without waiting for it. Clicks while one
 // is starting are dropped (a slow first start must not open three).
 func (t *trayApp) open(url string, extra ...string) {
@@ -258,6 +359,12 @@ func (t *trayApp) maintain() {
 		t.mu.Lock()
 		serving := t.srv != nil
 		t.mu.Unlock()
+		if serving && t.windowOpen() && !t.opening.Load() && autoUpdatesOn(t.lay) && t.barOpen() && t.updateWaiting() {
+			// The desktop bar keeps the profile in use: it steps aside
+			// (it comes back by itself in 30 s) so a waiting update can
+			// apply while no other window is open.
+			t.closeBarFor(15 * time.Second)
+		}
 		if !serving || t.windowOpen() || t.opening.Load() || !autoUpdatesOn(t.lay) {
 			continue
 		}

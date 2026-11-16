@@ -350,6 +350,15 @@ func newDirHandler(dir func() string) http.Handler {
 			fsAPI.ServeHTTP(w, r)
 			return
 		}
+		if r.URL.Path == openPath {
+			serveOpen(w, r) // the desktop bar asks for the main window (deskbar.go)
+			return
+		}
+		if r.URL.Path == barPath {
+			// The desktop bar's own address (deskbar.go), like quickPath.
+			http.Redirect(w, r, "/", http.StatusFound)
+			return
+		}
 		if r.URL.Path == quickPath {
 			// The small window's own address (window.go); the browser keeps
 			// the "#quick-win" fragment across the redirect.
