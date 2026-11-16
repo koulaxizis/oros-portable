@@ -220,3 +220,22 @@ func TestClaudeCaps(t *testing.T) {
 		t.Fatal("OROS_NO_CLAUDE ignored")
 	}
 }
+
+func TestWmctrlParsing(t *testing.T) {
+	w, ok := wmWork("0  * DG: 1920x1080  VP: 0,0  WA: 0,27 1920x1053  Desk 1\n1  - DG: 1920x1080  VP: N/A  WA: 0,0 1920x1080  Desk 2\n")
+	if !ok || w != (rect{0, 27, 1920, 1053}) {
+		t.Fatalf("wmWork = %v %v", w, ok)
+	}
+	if _, ok := wmWork("0  - DG: 1x1  VP: 0,0  WA: 0,0 1x1  D\n"); ok {
+		t.Fatal("no current desktop must give no work area")
+	}
+	exe := map[int]string{100: "/opt/claude/claude", 200: "/stick/orOS/browser/chrome"}
+	ws := wmWindows("0x03a00003  0 100  10 10 1200 800 host Claude\n0x0280000a  0 200  0 0 1900 1000 host orOS\nbad line\n",
+		func(pid int) string { return exe[pid] })
+	if len(ws) != 2 || ws[0].id != 0x03a00003 || ws[0].exe != "/opt/claude/claude" || ws[1].w != 1900 {
+		t.Fatalf("wmWindows = %+v", ws)
+	}
+	if o, c := pickWins(ws, "/stick/orOS"); o != 0x0280000a || c != 0x03a00003 {
+		t.Fatalf("pick = %x %x", o, c)
+	}
+}
