@@ -15,7 +15,6 @@ var (
 	procFindWindowW       = user32.NewProc("FindWindowW")
 	procGetWindowLongPtrW = user32.NewProc("GetWindowLongPtrW")
 	procSetWindowLongPtrW = user32.NewProc("SetWindowLongPtrW")
-	procSetWindowPos      = user32.NewProc("SetWindowPos")
 	procIsWindow          = user32.NewProc("IsWindow")
 	procPostMessageW      = user32.NewProc("PostMessageW")
 	procGetSystemMetrics  = user32.NewProc("GetSystemMetrics")
@@ -42,7 +41,6 @@ const (
 
 	swpNoActivate   = 0x0010
 	swpFrameChanged = 0x0020
-	swpShowWindow   = 0x0040
 
 	wmClose = 0x0010
 	smCx    = 0 // SM_CXSCREEN

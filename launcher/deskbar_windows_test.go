@@ -11,7 +11,6 @@ import (
 var (
 	procCreateWindowExW = user32.NewProc("CreateWindowExW")
 	procDestroyWindow   = user32.NewProc("DestroyWindow")
-	procGetWindowRect   = user32.NewProc("GetWindowRect")
 )
 
 // A real window titled like the bar: found, framed off, made a tool
