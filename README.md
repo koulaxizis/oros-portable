@@ -118,6 +118,9 @@ Window placement (`launcher/window.go`): the main orOS window opens maximised an
 
 `orOS quick` opens the same small window from a command: the Start menu entry "orOS Add or search", the "Add or search" action of the Linux menu entry, or a keyboard shortcut you set in your desktop's settings (Wayland gives apps no global shortcut). Plain GNOME shows no tray icons without the AppIndicator extension; `quick` works there too. The Windows setup offers "Start orOS in the tray with Windows" (unticked) and its uninstaller stops the tray and removes the Run value.
 
+### Smart bar on the desktop (Windows, installed copies)
+The tray menu's `Smart bar on the desktop` (off until you tick it; `deskbar.on` in the data folder) opens orOS's own top bar in a thin window of its own (`http://localhost:47800/__oros-bar#bar-win`, sent on to `/`; orOS shows only the menu button, the smart chips, the clock and the date there, titled `orOS bar`) and docks it at the top of the primary screen as a Windows app bar: no frame, no taskbar button, always on top, and maximised windows stay below it (`launcher/deskbar*.go`). The chips are the ones you pick in orOS Settings › Appearance › Top bar, with the look chosen there. A chip, the clock, the date or the menu button opens that app in the main orOS window, or, with none open, asks the tray (`POST /__oros-open`, only from orOS's own page) to open one. The bar comes back by itself 30 seconds after its browser closes while the setting is on; when an update waits, it steps aside so the update can apply; Quit closes it. With users on the computer the bar shows only while someone is signed in. Linux has no desktop bar yet.
+
 ### Install channels
 
 - **Scoop:** `scoop bucket add oros https://github.com/koulaxizis/oros-portable` then `scoop install oros`. The release workflow writes `bucket/oros.json` (from `packaging/scoop/oros.json.in`) to `main`.
