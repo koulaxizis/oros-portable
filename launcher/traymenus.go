@@ -100,27 +100,26 @@ func (t *trayApp) driveMenu() {
 	}()
 }
 
-// bridgeMenu shows whether orOS Bridge is ready for Studio and its
-// pairing code (the code Studio asks for once).
+// bridgeMenu shows whether orOS Bridge is ready for Studio. The pairing
+// code exists only while Studio asks to pair (the bridge removes its
+// code file otherwise), so the submenu always carries the state, a line
+// for the code (or where it will show) and Open Studio.
 func (t *trayApp) bridgeMenu() {
 	if bridgeExe(t.lay) == "" {
 		return
 	}
 	m := systray.AddMenuItem("orOS Bridge", "")
+	state := m.AddSubMenuItem("", "")
+	state.Disable()
 	code := m.AddSubMenuItem("", "")
 	code.Disable()
+	studio := m.AddSubMenuItem(word("Open Studio", "Άνοιγμα του Studio", "Studio öffnen"), "")
 	refresh := func() {
-		if bridgeAnswers() {
-			m.SetTitle("orOS Bridge: " + word("ready for Studio", "έτοιμο για το Studio", "bereit für Studio"))
-		} else {
-			m.SetTitle("orOS Bridge: " + word("Not running", "Δεν τρέχει", "Läuft nicht"))
-		}
-		if c := bridgeCode(t.lay); c != "" {
-			code.SetTitle(word("Pairing code: ", "Κωδικός σύνδεσης: ", "Kopplungscode: ") + c)
-			code.Show()
-		} else {
-			code.Hide()
-		}
+		up := bridgeAnswers()
+		title, line := bridgeLines(up, bridgeCode(t.lay))
+		m.SetTitle(title)
+		state.SetTitle(title)
+		code.SetTitle(line)
 	}
 	refresh()
 	go func() {
@@ -129,4 +128,24 @@ func (t *trayApp) bridgeMenu() {
 			refresh()
 		}
 	}()
+	go func() {
+		for range studio.ClickedCh {
+			t.open(appURL + "?open=studio")
+		}
+	}()
+}
+
+// bridgeLines: the menu title and the pairing line for the bridge's state.
+func bridgeLines(up bool, code string) (title, line string) {
+	if !up {
+		return "orOS Bridge: " + word("Not running", "Δεν τρέχει", "Läuft nicht"),
+			word("Quit orOS and open it again to start it", "Κλείσε το orOS από εδώ και άνοιξέ το ξανά για να ξεκινήσει", "orOS beenden und neu öffnen, um sie zu starten")
+	}
+	title = "orOS Bridge: " + word("ready for Studio", "έτοιμο για το Studio", "bereit für Studio")
+	if code != "" {
+		return title, word("Pairing code: ", "Κωδικός σύνδεσης: ", "Kopplungscode: ") + code
+	}
+	return title, word("The pairing code shows here when Studio connects",
+		"Ο κωδικός σύνδεσης εμφανίζεται εδώ όταν συνδεθεί το Studio",
+		"Der Kopplungscode erscheint hier, wenn Studio sich verbindet")
 }

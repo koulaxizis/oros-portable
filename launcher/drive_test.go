@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -113,5 +114,21 @@ func TestDriveSettingsRead(t *testing.T) {
 	s := readDriveSettings()
 	if !s.exists || len(s.Folders) != 1 || s.ManagedBy != "/x/orOS" || !s.OwnAutostart {
 		t.Fatalf("%+v", s)
+	}
+}
+
+func TestBridgeLinesNeverEmpty(t *testing.T) {
+	for _, c := range []struct {
+		up   bool
+		code string
+		want string
+	}{{false, "", "Not running"}, {true, "", "ready"}, {true, "123456", "ready"}} {
+		title, line := bridgeLines(c.up, c.code)
+		if !strings.Contains(title, c.want) || line == "" {
+			t.Errorf("bridgeLines(%v, %q) = %q, %q", c.up, c.code, title, line)
+		}
+		if c.code != "" && !strings.HasSuffix(line, c.code) {
+			t.Errorf("code missing: %q", line)
+		}
 	}
 }
