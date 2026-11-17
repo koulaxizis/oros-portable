@@ -154,6 +154,9 @@ jobs:
       - name: Build
         env:
           GH_TOKEN: ${{ github.token }}
+          # ubol.sh (orOS USB) asks the GitHub API for the uBOL release; signed
+          # in, so shared runner addresses do not hit the anonymous rate limit
+          GITHUB_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
