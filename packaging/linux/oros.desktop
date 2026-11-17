@@ -10,10 +10,14 @@ Icon=oros
 Terminal=false
 Categories=Office;
 Keywords=notes;calendar;todo;office;offline;
-Actions=quick;
+Actions=quick;drive;
 
 [Desktop Action quick]
 Name=Add or search
 Name[el]=Προσθήκη ή αναζήτηση
 Name[de]=Hinzufügen oder suchen
 Exec=oros quick
+
+[Desktop Action drive]
+Name=orOS Drive
+Exec=oros drive

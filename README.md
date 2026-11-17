@@ -98,7 +98,7 @@ The same launcher and browser also install on a computer (`scripts/build-install
 
 | | File | Installs to |
 |---|---|---|
-| Windows 10/11 | `orOS-Setup-<version>.exe` (Inno Setup, `packaging/windows/orOS.iss`), per user, no admin rights, Start menu entry, uninstaller; offers [orOS Drive](https://github.com/koulaxizis/oros-drive) too (see below) | `%LOCALAPPDATA%\Programs\orOS` |
+| Windows 10/11 | `orOS-Setup-<version>.exe` (Inno Setup, `packaging/windows/orOS.iss`), per user, no admin rights, Start menu entry, uninstaller; installs [orOS Drive](https://github.com/koulaxizis/oros-drive) too (see below) | `%LOCALAPPDATA%\Programs\orOS` |
 | Linux | `orOS-<version>-x86_64.AppImage` (+ `.zsync` for AppImageUpdate), adds its own menu entry on start (`remove-menu` takes it away) | runs from the file |
 | Debian/Ubuntu | `oros_<version>_amd64.deb`, `/usr/bin/oros`, desktop entry, AppArmor rule that lets the bundled Chromium use its sandbox on Ubuntu 23.10+ | `/opt/oros` |
 
@@ -106,9 +106,14 @@ An `installed` file next to the launcher switches it to installed mode: the brow
 
 Installed copies update themselves (`launcher/autoupdate.go`; portable copies keep the manual `update`). At most every 6 hours, while orOS is open, the launcher checks GitHub in the background: a new commit on orOS `main` is downloaded into `app.next` and swapped in at the next start, never under an open window. A new release of this repo is downloaded too and checked against its `.sha256` asset: the Windows setup then runs silently at the next start (`/RELAUNCH=1` opens orOS again), the AppImage replaces its own file, the .deb is offered at the next start and installed with `pkexec apt-get install` (the desktop's own password prompt), and a Scoop install leaves new releases to `scoop update`. The Windows setup asks whether to update automatically and writes a `no-auto-update` file in the data folder when you say no; that file, or `OROS_NO_AUTO_UPDATE`, turns it off. Test builds (`0.0.0-<sha>`) never update. Every check writes one line to `update.log` in the data folder (kept to 64 KB, also in the report zip), because `launcher.log` starts empty with each window and the reason an update failed used to be lost; a check that breaks is tried again after 1 and 3 minutes (a connection cut in the middle of the download right after the computer starts is common), and one that still fails is tried again after 30 minutes instead of 6 hours.
 
-### orOS Drive in the Windows setup
+### One package: orOS, orOS Drive and orOS Bridge
 
-The Windows setup carries the latest [orOS Drive](https://github.com/koulaxizis/oros-drive) setup (CI downloads it from that repo's latest release and checks it against its `SHA256SUMS.txt`) and offers "Also install orOS Drive" (unticked) while Drive is not installed. Ticked, it runs Drive's own setup silently for the current user and opens Drive's settings page for the sign-in. Drive stays its own program: its own folder, Start menu entry, tray icon (the orOS mark in reverse colours, gold tile), updates and uninstaller; removing orOS keeps Drive. Once Drive is installed the option is not shown again, so an automatic update of orOS never puts an older Drive back. Linux keeps the separate Drive packages.
+An installed orOS brings [orOS Drive](https://github.com/koulaxizis/oros-drive) and [orOS Bridge](https://github.com/koulaxizis/oros-bridge) with it, under one tray icon (Chris 2026-11-17). Bridge is part of orOS (above). Drive stays its own program (its own folder, settings, sign-in, Explorer folder and uninstaller) but is managed by orOS (`launcher/drive.go`, Drive 0.5.0+ `orosdrive manage`): it shows no icon and has no login start of its own, and the orOS tray starts it when it has settings, restarts it if it stops (at most 3 times in 10 minutes), stops it on Quit and shows an **orOS Drive** menu (state, Sync now, Pause or Resume, Settings) and an **orOS Bridge** menu (ready for Studio, the pairing code). When Drive mirrors its first folder, the tray turns Start with the computer on (once), so Drive keeps syncing after a restart. Drive's Dropbox sign-in works while orOS holds port 47800: Drive asks `GET /__oros/drive-signin`, and the server sends a Dropbox answer whose state Drive made (`orosdrive-<port>-<random>`, ports 47811 to 47820) on to `http://127.0.0.1:<port>/oauth/done`, where Drive takes only its own waiting sign-in.
+
+- **Windows:** the setup carries the latest Drive setup (CI downloads it from that repo's latest release and checks it against its `SHA256SUMS.txt`; a release needs Drive 0.5.0+) and installs Drive too, ticked by default, with `/MANAGEDBY=<orOS.exe>`; its settings page then opens for the sign-in. A Drive installed already is updated when the one inside is newer and never made older; an automatic (silent) update of an installed orOS never adds Drive. Uninstalling orOS asks "Also uninstall orOS Drive?": yes runs Drive's own uninstaller (it asks about its settings and never touches the folders); no, or a silent uninstall, runs `orosdrive manage off`, so Drive shows its own icon and starts with Windows again. Drive also lets go by itself when the orOS program it names is gone.
+- **Linux:** the AppImage and the .deb carry `drive/linux/orosdrive` (the latest Drive release, checked; a release needs 0.5.0+). A separately installed Drive (`/usr/bin/orosdrive`, its .deb) is used first. An AppImage copies its Drive to `~/.local/share/oros/drive/` so Drive keeps running after the AppImage ends. The menu entry's **orOS Drive** action (`orOS drive`) starts the tray and opens Drive's settings; on Linux a window starts the tray beside it only when Drive is set up (its settings exist).
+- **Portable zips and sticks:** no Drive (it belongs to one computer). Live USB and Android are unchanged.
+- winget `koulaxizis.orOS` installs the whole package; `koulaxizis.orOSDrive` and the Scoop buckets stay for those who want Drive alone.
 
 ### Tray: add or search (installed copies)
 
@@ -140,6 +145,7 @@ The tray menu's `Smart bar on the desktop` (off until you tick it; `deskbar.on` 
 | `orOS serve` | only run the server, for debugging |
 | `orOS remove-menu` | remove the menu entry that the AppImage added (and its start at login) |
 | `orOS tray` | installed copies: the tray icon (see Tray) |
+| `orOS drive` | installed copies: start the tray and open orOS Drive's settings (see One package) |
 | `orOS quick` | the small "Add or search" window |
 | `orOS update-stage` | download orOS into `app.next` for the next start (the System panel's "Update orOS") |
 

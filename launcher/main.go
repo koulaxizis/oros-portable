@@ -108,6 +108,8 @@ func main() {
 		runTray(lay)
 	case "quick":
 		runQuick(lay)
+	case "drive":
+		runDrive(lay)
 	case "serve":
 		serveOnly(lay)
 	case "update":
@@ -315,6 +317,18 @@ func newDirHandler(dir func() string) http.Handler {
 		// through DNS rebinding.
 		if !allowedHost(r.Host) {
 			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		if r.URL.Path == driveSignInPath {
+			// orOS Drive asks whether its Dropbox sign-in can come through
+			// here (drive.go).
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("Cache-Control", "no-store")
+			_, _ = io.WriteString(w, `{"ok":true}`)
+			return
+		}
+		if to, ok := driveRedirect(r); ok {
+			http.Redirect(w, r, to, http.StatusFound) // Dropbox's answer for orOS Drive
 			return
 		}
 		if r.URL.Path == markerPath {

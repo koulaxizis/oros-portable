@@ -55,6 +55,13 @@ if [ -e "$ROOT/out/orOS-Portable/bridge" ]; then
   grep -q "is ready on 127.0.0.1:" "$bhome/bridge.log"
   echo "ok: deb carries orOS Bridge, bundled (no updates of its own), and it starts"
 fi
+# orOS Drive, when this build carries it (Drive 0.5.0+, launcher/drive.go)
+if [ -e /opt/oros/drive ]; then
+  test -x /opt/oros/drive/linux/orosdrive && test -f /opt/oros/drive/linux/THIRD-PARTY-NOTICES.txt
+  /opt/oros/drive/linux/orosdrive version
+  /opt/oros/drive/linux/orosdrive help | grep -q 'manage --by'
+  echo "ok: deb carries orOS Drive with managed mode"
+fi
 check_serves deb oros
 sudo apt-get remove -y -q oros
 test ! -e /opt/oros && test ! -e /usr/bin/oros

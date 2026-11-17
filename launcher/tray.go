@@ -119,6 +119,9 @@ func (t *trayApp) ready() {
 			"Smarte Leiste auf dem Desktop"), "", deskbarOn(t.lay.data))
 	}
 	systray.AddSeparator()
+	t.driveMenu()
+	t.bridgeMenu()
+	systray.AddSeparator()
 	auto := systray.AddMenuItemCheckbox(word("Start with the computer", "Εκκίνηση με τον υπολογιστή", "Mit dem Computer starten"), "", autostartOn())
 	systray.AddSeparator()
 	quit := systray.AddMenuItem(word("Quit", "Έξοδος", "Beenden"), "")
@@ -167,6 +170,9 @@ func (t *trayApp) ready() {
 				}
 			case <-quit.ClickedCh:
 				t.quitting.Store(true)
+				if readDriveSettings().ManagedBy == managerPath() {
+					driveQuit() // orOS started it; it ends with orOS's icon
+				}
 				t.closeBar() // the bar would keep the server waiting (exit)
 				systray.Quit()
 				return

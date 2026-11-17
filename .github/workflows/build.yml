@@ -154,6 +154,9 @@ jobs:
       - name: Build
         env:
           GH_TOKEN: ${{ github.token }}
+          # ubol.sh (orOS USB) asks the GitHub API for the uBOL release; signed
+          # in, so shared runner addresses do not hit the anonymous rate limit
+          GITHUB_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
@@ -166,8 +169,14 @@ jobs:
           scripts/build-sticktest.sh "$VERSION"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
       - name: Linux installers (AppImage, .deb) and Windows setup files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
         run: |
           sudo apt-get update -q && sudo apt-get install -y -q desktop-file-utils zsync
+          # a release must carry orOS Drive 0.5.0+ (managed by orOS); a test build may go without
+          case "$GITHUB_REF" in refs/tags/v*) export OROS_REQUIRE_DRIVE=1;; esac
+          if [ -n "$TAG" ]; then export OROS_REQUIRE_DRIVE=1; fi
           scripts/build-installers.sh "$VERSION"
       - name: Install test (.deb and AppImage)
         run: scripts/test-installers.sh
@@ -231,6 +240,12 @@ jobs:
           exe=$(ls orOS-Drive-Setup-*.exe)
           grep " \./$exe\$\| $exe\$" SHA256SUMS.txt | sed "s# \./# #" | sha256sum -c -
           ver=${exe#orOS-Drive-Setup-}; ver=${ver%.exe}
+          # a release must carry orOS Drive 0.5.0+ (managed by orOS, one tray icon)
+          if [ "$(printf '%s\n' 0.5.0 "$ver" | sort -V | head -1)" != 0.5.0 ]; then
+            echo "orOS Drive $ver is older than 0.5.0" >&2
+            case "$GITHUB_REF" in refs/tags/v*) exit 1;; esac
+            if [ -n "${{ inputs.tag }}" ]; then exit 1; fi
+          fi
           mv "$exe" orOS-Drive-Setup.exe
           echo "$ver" > VERSION
       - name: Build orOS-Setup.exe

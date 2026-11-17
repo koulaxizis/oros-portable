@@ -15,6 +15,8 @@ Description: |-
   orOS is a private, offline-first workspace: notes, calendar, to-do, files, office apps, games and many
   more apps that work without internet and can sync end-to-end encrypted through your own Dropbox.
   It runs in its own ungoogled-chromium window, without Google services. Free forever, MIT.
+  The setup also installs orOS Drive (folders of this computer in sync with orOS Files) and carries
+  orOS Bridge (plugins and the sound card for orOS Studio), all under one tray icon.
 Moniker: oros
 Tags:
 - notes

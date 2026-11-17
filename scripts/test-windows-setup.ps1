@@ -4,9 +4,9 @@
 param([Parameter(Mandatory)] [string] $Setup)
 $ErrorActionPreference = 'Stop'
 
-# "autostart" and "drive" are off by default; the test turns them on to
-# check the Run value and the bundled orOS Drive setup.
-$p = Start-Process $Setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', '/MERGETASKS=autostart,drive', '/LOG=setup.log' -Wait -PassThru
+# "autostart" is off by default; the test turns it on to check the Run
+# value. "drive" is on by default (one package, 2026-11-17).
+$p = Start-Process $Setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', '/MERGETASKS=autostart', '/LOG=setup.log' -Wait -PassThru
 if ($p.ExitCode) { Get-Content setup.log -Tail 30; throw "setup exited with $($p.ExitCode)" }
 
 $app = Join-Path $env:LOCALAPPDATA 'Programs\orOS'
@@ -27,6 +27,20 @@ if ($hasBridge) {
 $driveApp = Join-Path $env:LOCALAPPDATA 'Programs\orOS Drive'
 if (-not (Test-Path (Join-Path $driveApp 'orOS Drive.exe'))) { Get-Content setup.log -Tail 30; throw 'orOS Drive was not installed' }
 Write-Host 'ok: orOS Drive installed by the orOS setup'
+# orOS Drive 0.5.0+ is managed by orOS (one tray icon): app.json names
+# orOS.exe and Drive has no Run value of its own. An older Drive release
+# (before oros-drive #18) ignores /MANAGEDBY.
+$driveCfg = Join-Path $env:APPDATA 'orOS Drive'
+$driveVer = [version]((& (Join-Path $driveApp 'orosdrive.exe') version) -replace '^.*?(\d+\.\d+\.\d+).*$', '$1')
+$managedDrive = $driveVer -ge [version]'0.5.0'
+if ($managedDrive) {
+  $j = Get-Content (Join-Path $driveCfg 'app.json') -Raw | ConvertFrom-Json
+  if ($j.managedBy -ne (Join-Path $app 'orOS.exe')) { throw "orOS Drive managedBy is '$($j.managedBy)'" }
+  if ((Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -ErrorAction SilentlyContinue).'orOS Drive') { throw 'a managed orOS Drive has its own Run value' }
+  Write-Host 'ok: orOS Drive managed by orOS'
+} else {
+  Write-Host "note: orOS Drive $driveVer predates managed mode; managed checks skipped"
+}
 
 # Like an automatic update: Drive is installed now, so the setup does not
 # run its bundled Drive setup again (that could put an older Drive back).
@@ -75,6 +89,16 @@ $second = Start-Process (Join-Path $app 'orOS.exe') -ArgumentList 'tray' -PassTh
 if (-not $second.WaitForExit(15000)) { throw 'a second tray did not stop' }
 if ($tray.HasExited) { throw 'the first tray stopped' }
 Write-Host 'ok: the tray serves, one per user'
+if ($managedDrive) {
+  # the tray starts the managed orOS Drive (launcher/drive.go)
+  $ok = $false
+  for ($i = 0; $i -lt 30 -and -not $ok; $i++) {
+    $ok = [bool](Get-Process 'orOS Drive', orosdrive -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$driveApp\*" })
+    if (-not $ok) { Start-Sleep 1 }
+  }
+  if (-not $ok) { Get-Content (Join-Path $data 'tray.log') -ErrorAction SilentlyContinue; throw 'the tray did not start orOS Drive' }
+  Write-Host 'ok: the tray starts orOS Drive'
+}
 if ($hasBridge) {
   # the tray starts the bundled bridge with the server; it ends with the tray
   $ok = $false
@@ -127,7 +151,22 @@ Write-Host 'ok: uninstalled cleanly, data kept'
 # orOS Drive is its own program: removing orOS keeps it; its own
 # uninstaller removes it.
 if (-not (Test-Path (Join-Path $driveApp 'orOS Drive.exe'))) { throw 'removing orOS removed orOS Drive' }
+if ($managedDrive -and (Get-Content (Join-Path $driveCfg 'app.json') -Raw | ConvertFrom-Json).managedBy) { throw 'orOS Drive is still managed by the removed orOS' }
 Get-Process 'orOS Drive' -ErrorAction SilentlyContinue | Stop-Process -Force
 $u = Start-Process (Join-Path $driveApp 'unins000.exe') -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait -PassThru
 if ($u.ExitCode) { throw "Drive uninstall exited with $($u.ExitCode)" }
 Write-Host 'ok: orOS Drive kept by the orOS uninstaller, removed by its own'
+
+# An automatic (silent) update of an installed orOS never adds orOS Drive:
+# install orOS (fresh: Drive comes too), remove Drive, update orOS silently.
+$p = Start-Process $Setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', '/LOG=setup3.log' -Wait -PassThru
+if ($p.ExitCode) { throw "third setup exited with $($p.ExitCode)" }
+Get-Process 'orOS Drive', orosdrive -ErrorAction SilentlyContinue | Stop-Process -Force
+Start-Process (Join-Path $driveApp 'unins000.exe') -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait | Out-Null
+for ($i = 0; $i -lt 30 -and (Test-Path (Join-Path $driveApp 'orOS Drive.exe')); $i++) { Start-Sleep 1 }
+$p = Start-Process $Setup -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', '/LOG=setup4.log' -Wait -PassThru
+if ($p.ExitCode) { throw "fourth setup exited with $($p.ExitCode)" }
+if (Test-Path (Join-Path $driveApp 'orOS Drive.exe')) { throw 'a silent update of orOS added orOS Drive' }
+Write-Host 'ok: a silent update does not add orOS Drive'
+Get-Process orOS, chrome -ErrorAction SilentlyContinue | Where-Object { $_.Path -like "$app\*" } | Stop-Process -Force
+Start-Process (Join-Path $app 'unins000.exe') -ArgumentList '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART' -Wait | Out-Null
