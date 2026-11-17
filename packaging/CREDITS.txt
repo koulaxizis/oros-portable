@@ -39,6 +39,10 @@ Christos Koulaxizis with the work of many others. Thank you to:
   (MIT), are inside it. https://github.com/ollama/ollama
 - The Qwen team (Alibaba Cloud): the Qwen3 models (Apache-2.0) that the
   local AI button downloads through Ollama. https://github.com/QwenLM/Qwen3
+- orOS Drive (drive/, Linux installers; the Windows setup carries its own
+  setup): keeps folders of this computer in sync with orOS Files, MIT, built
+  with Go modules under their own licences (drive/linux/THIRD-PARTY-NOTICES.txt).
+  https://github.com/koulaxizis/oros-drive
 - orOS Bridge (bridge/, full edition and installers): plugins and the sound
   card for orOS Studio, MIT (orOS-Bridge-MIT.txt), with the VST 3 SDK and CLAP
   (MIT), JSON for Modern C++ (MIT) and miniaudio (public domain or MIT-0)

@@ -58,7 +58,7 @@ Exec=%s
 Icon=%s
 Terminal=false
 Categories=Office;
-Actions=quick;
+Actions=quick;drive;
 X-AppImage-Path=%s
 
 [Desktop Action quick]
@@ -66,7 +66,11 @@ Name=Add or search
 Name[el]=Προσθήκη ή αναζήτηση
 Name[de]=Hinzufügen oder suchen
 Exec=%s quick
-`, q, icon, img, q)
+
+[Desktop Action drive]
+Name=orOS Drive
+Exec=%s drive
+`, q, icon, img, q, q)
 	if old, err := os.ReadFile(desktop); err == nil && string(old) == entry {
 		return nil
 	}

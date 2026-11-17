@@ -49,8 +49,18 @@ func trayHoldsProgram(lay layout) bool {
 // startTrayAlongside starts "orOS tray" as a process of its own, so it
 // stays when the window's launcher ends. A tray that runs already holds
 // tray.lock and is left alone.
+// On Linux it starts only when orOS Drive is set up here, because the
+// tray starts and keeps Drive (drive.go).
 func startTrayAlongside(lay layout) bool {
-	if !lay.installed || !trayAlongsideOS || os.Getenv("OROS_NO_TRAY") != "" {
+	if !lay.installed || !(trayAlongsideOS || driveWanted(lay)) {
+		return false
+	}
+	return startTrayFor(lay)
+}
+
+// startTrayFor starts the tray unless it runs already or OROS_NO_TRAY is set.
+func startTrayFor(lay layout) bool {
+	if os.Getenv("OROS_NO_TRAY") != "" {
 		return false
 	}
 	unlock, free := lockTray(lay.data)

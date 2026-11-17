@@ -4,7 +4,7 @@
 #   out/installers/oros_<version>_amd64.deb
 # and stages out/installers/windows/ for the Windows setup (built by iscc
 # on a Windows runner, see packaging/windows/orOS.iss).
-# Needs: curl, dpkg-deb, and the output of scripts/build.sh.
+# Needs: curl, dpkg-deb, gh (orOS Drive), and the output of scripts/build.sh.
 set -euo pipefail
 
 VERSION="${1:-0.0.0-dev}"
@@ -18,6 +18,31 @@ rm -rf "$OUT" && mkdir -p "$OUT"
 # app/.oros-commit (written by the launcher's update in build.sh) tells the
 # automatic update which orOS an install starts with.
 [ -f "$FULL/app/.oros-commit" ] || echo "warning: no app/.oros-commit; the first automatic update downloads orOS again" >&2
+
+# orOS Drive for the Linux installers (one package, 2026-11-17): the
+# launcher's tray starts and shows it (launcher/drive.go). The latest
+# release, checked against its SHA256SUMS.txt; 0.5.0+ (managed by orOS).
+# A release (OROS_REQUIRE_DRIVE=1) stops without it, a test build goes on.
+# Not in the portable zips: Drive belongs to one computer. On Windows
+# the setup carries Drive's own setup (build.yml).
+DRIVE_DIR=""
+DRIVE_TAG="$(gh release view --repo koulaxizis/oros-drive --json tagName -q .tagName 2>/dev/null || true)"
+if [ -n "$DRIVE_TAG" ] && [ "$(printf '%s\n' 0.5.0 "${DRIVE_TAG#v}" | sort -V | head -1)" = 0.5.0 ]; then
+  DRIVE_DIR="$WORK/drive"
+  mkdir -p "$DRIVE_DIR/dl"
+  gh release download "$DRIVE_TAG" --repo koulaxizis/oros-drive --dir "$DRIVE_DIR/dl" \
+    --pattern 'orosdrive-*-linux-amd64.tar.gz' --pattern SHA256SUMS.txt
+  (cd "$DRIVE_DIR/dl" && tr -d '\r' < SHA256SUMS.txt | sed 's#  \./#  #' | grep -E '  orosdrive-.*-linux-amd64\.tar\.gz$' | sha256sum -c -)
+  tar -xzf "$DRIVE_DIR"/dl/orosdrive-*-linux-amd64.tar.gz -C "$DRIVE_DIR/dl"
+  mkdir -p "$DRIVE_DIR/linux"
+  find "$DRIVE_DIR/dl" -mindepth 2 -maxdepth 2 -type f -exec cp {} "$DRIVE_DIR/linux/" \;
+  chmod +x "$DRIVE_DIR/linux/orosdrive"
+  printf 'orOS %s carries this orOS Drive (%s, https://github.com/koulaxizis/oros-drive); a new orOS brings a new one.\n' \
+    "$VERSION" "$DRIVE_TAG" > "$DRIVE_DIR/linux/oros-drive.bundled"
+else
+  echo "warning: orOS Drive ${DRIVE_TAG:-(none)} is older than 0.5.0; the Linux installers go without it" >&2
+  if [ -n "${OROS_REQUIRE_DRIVE:-}" ]; then exit 1; fi
+fi
 
 # Program files shared by every installer: the launcher, orOS, licences and
 # the "installed" marker that moves the data to the user's own folder.
@@ -39,6 +64,8 @@ stage() { # stage <dest> <os: linux|windows>
   if [ -f "$FULL/ollama-$os.json" ]; then cp "$FULL/ollama-$os.json" "$dest/"; fi
   # orOS Bridge for this system only (launcher/bridge.go)
   if [ -d "$FULL/bridge/$os" ]; then mkdir -p "$dest/bridge" && cp -r "$FULL/bridge/$os" "$dest/bridge/$os"; fi
+  # orOS Drive for Linux (launcher/drive.go); Windows gets Drive's setup
+  if [ "$os" = linux ] && [ -n "$DRIVE_DIR" ]; then mkdir -p "$dest/drive" && cp -r "$DRIVE_DIR/linux" "$dest/drive/linux"; fi
   rm -f "$dest/browser/$os/chromedriver" "$dest/browser/$os/chromedriver.exe"
   if [ "$os" = linux ]; then cp "$FULL/orOS" "$dest/"; else cp "$FULL/orOS.exe" "$dest/"; fi
   printf 'orOS %s, installed by its setup. Delete this file to run portable.\n' "$VERSION" > "$dest/installed"
@@ -86,7 +113,7 @@ cp "$ROOT/packaging/linux/apparmor-oros-chromium" "$DEB/usr/share/oros/"
     "/opt/oros/browser/linux is ungoogled-chromium, BSD-3-Clause, with open-source" \
     "components under their own licences (LGPL, MPL, Apache-2.0, MIT and more);" \
     "the launcher is built with Go (BSD-3-Clause); /opt/oros/bridge is orOS Bridge," \
-    "MIT. Credits and every licence" \
+    "MIT; /opt/oros/drive is orOS Drive, MIT (its THIRD-PARTY-NOTICES.txt beside it). Credits and every licence" \
     "text: /opt/oros/LICENSES (CREDITS.txt first). Sources: /opt/oros/SOURCES.txt," \
     "written offer: /opt/oros/WRITTEN-OFFER.txt. The orOS web app's own credits:" \
     "/opt/oros/app/CREDITS.md." ""
