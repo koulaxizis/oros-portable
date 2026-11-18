@@ -1,13 +1,13 @@
 {
-    "version": "0.9.1",
+    "version": "0.9.2",
     "description": "orOS, the offline-first workspace: notes, calendar, files, office apps and games that work without internet",
     "homepage": "https://useoros.online",
     "license": "MIT",
     "notes": "orOS keeps its data in %LOCALAPPDATA%\\orOS, so it survives updates and reinstalls.",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/koulaxizis/oros-portable/releases/download/v0.9.1/orOS-Setup-0.9.1.exe",
-            "hash": "4c81ec02ab1128ca667f092cd440ce2aaf05de7127d97f88b1e27a587cfd708a"
+            "url": "https://github.com/koulaxizis/oros-portable/releases/download/v0.9.2/orOS-Setup-0.9.2.exe",
+            "hash": "22386437145c89bbd5bab713f89c3b54a6374d4d3cca81ffa120f23165933a54"
         }
     },
     "innosetup": true,
