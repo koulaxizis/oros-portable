@@ -97,6 +97,13 @@ func TestWindowsDeskbarChromeProbe(t *testing.T) {
 	abd := dock(h)
 	defer undock(abd)
 	time.Sleep(3 * time.Second)
+	fit(h, abd.rc)
+	time.Sleep(time.Second)
 	dumpWin(t, "after dock", h)
 	shot(t, "2-after")
+	p, ok := pageRect(h)
+	t.Logf("page %v ok %v want %v", p, ok, abd.rc)
+	if !ok || p != abd.rc {
+		t.Fatalf("the page is at %v (found %v), the bar's place is %v", p, ok, abd.rc)
+	}
 }
