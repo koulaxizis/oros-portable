@@ -1,0 +1,21 @@
+name: deskbar-probe
+on:
+  push:
+    branches: [claude/project-thread-0frpj0]
+jobs:
+  probe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - shell: pwsh
+        run: |
+          $env:OROS_SHOTS = "$env:RUNNER_TEMP\shots"; New-Item -ItemType Directory $env:OROS_SHOTS | Out-Null
+          cd launcher; go test -run 'TestWindowsDeskbarChrome' -v .
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shots
+          path: ${{ runner.temp }}/shots
