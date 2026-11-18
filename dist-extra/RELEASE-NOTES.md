@@ -30,6 +30,8 @@ The installed orOS uses its own private browser (ungoogled-chromium), works offl
 
 **Smart bar on the desktop (Windows):** tick **Smart bar on the desktop** in the orOS tray menu and orOS's top bar (your smart chips, the clock and the date) docks as a thin strip at the top of the screen, above every window; maximised windows stay below it. A chip opens its app in the main orOS window. Fixed in this version: the strip used to show the browser's own title bar instead, so it looked like a small orOS window.
 
+**Local folders for Claude:** in orOS Settings › Connected services › orOS Gate › Local folders for Claude (temporary), type the path of a folder on this computer (for example `C:\Users\you\Desktop\Book pictures`) so orOS Layout can use it through orOS Gate: a read folder is only read (what Layout uses is copied into the document), a write folder only takes new files such as the print PDF and never has a file replaced. orOS checks every call against the folder you opened: nothing outside it, and no shortcut, symbolic link or junction that leads elsewhere. Each folder ends after 30 days, and Pause stops them all at once.
+
 **Users:** add people in orOS Settings › Users; each has their own orOS, password and Internet window, and there is an optional guest. Encrypting each user's files is optional and only on orOS Live USB.
 
 Also from free package managers: `scoop bucket add oros https://github.com/koulaxizis/oros-portable` and `scoop install oros`, or `winget install koulaxizis.orOS` (once the package is listed there). [Code signing policy](https://github.com/koulaxizis/oros-portable#code-signing-policy)
