@@ -15,9 +15,6 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-var procGetClassNameWT = user32.NewProc("GetClassNameW")
-var procEnumChildWindowsT = user32.NewProc("EnumChildWindows")
-
 func chromeForTest() string {
 	if p := os.Getenv("OROS_TEST_CHROME"); p != "" {
 		return p
@@ -41,13 +38,13 @@ func dumpWin(t *testing.T, label string, h uintptr) {
 	t.Logf("%s: top %#x rect %v style %#x", label, h, r, st)
 	cb := windows.NewCallback(func(c windows.HWND, _ uintptr) uintptr {
 		buf := make([]uint16, 256)
-		procGetClassNameWT.Call(uintptr(c), uintptr(unsafe.Pointer(&buf[0])), 256)
+		procGetClassNameW.Call(uintptr(c), uintptr(unsafe.Pointer(&buf[0])), 256)
 		var cr struct{ l, t, r, b int32 }
 		procGetWindowRect.Call(uintptr(c), uintptr(unsafe.Pointer(&cr)))
 		t.Logf("   child %#x %s %v visible=%v", c, windows.UTF16ToString(buf), cr, windows.IsWindowVisible(c))
 		return 1
 	})
-	procEnumChildWindowsT.Call(h, cb, 0)
+	procEnumChildWindows.Call(h, cb, 0)
 }
 
 func shot(t *testing.T, name string) {
@@ -61,7 +58,10 @@ func shot(t *testing.T, name string) {
 	t.Logf("shot %s: %v %s", p, err, out)
 }
 
-func TestWindowsDeskbarChromeProbe(t *testing.T) {
+// A real Chrome app window, as the tray opens the bar: docked, only its
+// page shows, exactly on the app bar's strip (Chromium's own title bar
+// above the screen). OROS_SHOTS=<dir> saves screenshots before and after.
+func TestWindowsDeskbarChrome(t *testing.T) {
 	chrome := chromeForTest()
 	if chrome == "" {
 		t.Skip("no Chrome")
