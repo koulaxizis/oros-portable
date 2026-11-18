@@ -62,7 +62,7 @@ On [orOS USB](https://github.com/koulaxizis/oros-usb) (the live stick and orOS i
 
 | Call | |
 |---|---|
-| `GET roots` | home and mounted disks, with free and total space and read-only; `os` (`linux` or `windows`) |
+| `GET roots` | home and mounted disks, with free and total space and read-only; `os` (`linux` or `windows`), `under: true` (this launcher checks `under=`) |
 | `GET list?path=`, `GET stat?path=` | folder entries `{name, path, dir, size, mtime}` |
 | `GET raw?path=` | the file (Range requests for video and audio); `X-Oros-MTime` |
 | `PUT raw?path=[&replace=1][&ifmtime=ms]` | write the request body |
