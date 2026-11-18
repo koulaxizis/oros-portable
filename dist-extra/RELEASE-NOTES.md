@@ -28,6 +28,8 @@ The installed orOS uses its own private browser (ungoogled-chromium), works offl
 
 **Tray icon on Windows:** the installed orOS puts its icon in the tray every time you open it (click it to add a task or search, or press Ctrl+Alt+Shift+Space). Before, it appeared only with "Start with the computer" on, so it was gone after a restart or an update.
 
+**Smart bar on the desktop (Windows):** tick **Smart bar on the desktop** in the orOS tray menu and orOS's top bar (your smart chips, the clock and the date) docks as a thin strip at the top of the screen, above every window; maximised windows stay below it. A chip opens its app in the main orOS window. Fixed in this version: the strip used to show the browser's own title bar instead, so it looked like a small orOS window.
+
 **Users:** add people in orOS Settings › Users; each has their own orOS, password and Internet window, and there is an optional guest. Encrypting each user's files is optional and only on orOS Live USB.
 
 Also from free package managers: `scoop bucket add oros https://github.com/koulaxizis/oros-portable` and `scoop install oros`, or `winget install koulaxizis.orOS` (once the package is listed there). [Code signing policy](https://github.com/koulaxizis/oros-portable#code-signing-policy)
@@ -71,6 +73,8 @@ Also from free package managers: `scoop bucket add oros https://github.com/koula
 **Τοπικό AI για τον Βοηθό:** οι εγκαταστάτες και η πλήρης έκδοση για stick μπορούν να τρέχουν ένα δωρεάν AI σε αυτόν τον υπολογιστή για τον Βοηθό του orOS, ώστε να δουλεύει χωρίς internet και ό,τι γράφεις να μη φεύγει ποτέ από τον υπολογιστή. Άνοιξε τον Βοηθό και πάτα **Εγκατάσταση τοπικού AI** (ή Σύστημα › Τοπικό AI): το orOS κατεβάζει το Ollama και ένα μοντέλο που ταιριάζει στη μνήμη του υπολογιστή (περίπου 3 έως 7 GB συνολικά, μία φορά) και ο Βοηθός το χρησιμοποιεί χωρίς καμία ρύθμιση. Οι "Περισσότερες επιλογές" δίνουν μικρότερο ή μεγαλύτερο μοντέλο, την κάρτα γραφικών και Αφαίρεση, που ελευθερώνει τον χώρο. Σε stick μένει στο stick· σταματά όταν κλείνει το orOS.
 
 **Κωδικοί στις σελίδες:** στους εγκαταστάτες και στην πλήρη έκδοση για stick το παράθυρο **Internet** ανοίγει πια στον ίδιο browser με το orOS και έχει το add-on του orOS, οπότε συμπληρώνει τους κωδικούς, τις κάρτες και τις διευθύνσεις από τους Κωδικούς του orOS και προτείνει να αποθηκεύσεις νέους κωδικούς (τίποτα δεν αποθηκεύεται αν δεν πατήσεις Αποθήκευση στους Κωδικούς). Οι σελίδες όπου ήσουν συνδεδεμένος στο παράθυρο Internet θα ζητήσουν μία φορά ξανά σύνδεση.
+
+**Έξυπνη γραμμή στην επιφάνεια εργασίας (Windows):** τσέκαρε **Έξυπνη γραμμή στην επιφάνεια εργασίας** στο μενού του εικονιδίου orOS και η πάνω γραμμή του orOS (οι έξυπνες κάρτες σου, η ώρα και η ημερομηνία) κολλάει σαν λεπτή λωρίδα στην κορυφή της οθόνης, πάνω από όλα τα παράθυρα· τα μεγιστοποιημένα παράθυρα μένουν από κάτω της. Μια κάρτα ανοίγει την εφαρμογή της στο κύριο παράθυρο του orOS. Διορθώθηκε σε αυτή την έκδοση: η λωρίδα έδειχνε τη γραμμή τίτλου του browser και έμοιαζε με μικρό παράθυρο orOS.
 
 **Χρήστες:** προσθέτεις άτομα στις Ρυθμίσεις › Χρήστες του orOS· ο καθένας έχει το δικό του orOS, κωδικό και παράθυρο Internet, και υπάρχει προαιρετικά επισκέπτης. Η κρυπτογράφηση των αρχείων κάθε χρήστη είναι προαιρετική και μόνο στο orOS Live USB.
 

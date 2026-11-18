@@ -19,6 +19,8 @@ var (
 	procPostMessageW      = user32.NewProc("PostMessageW")
 	procGetSystemMetrics  = user32.NewProc("GetSystemMetrics")
 	procGetDpiForWindow   = user32.NewProc("GetDpiForWindow")
+	procEnumChildWindows  = user32.NewProc("EnumChildWindows")
+	procGetClassNameW     = user32.NewProc("GetClassNameW")
 )
 
 const (
@@ -48,12 +50,14 @@ const (
 
 var hwndTopmost = ^uintptr(0) // HWND_TOPMOST = (HWND)-1
 
+type winRect struct{ left, top, right, bottom int32 }
+
 type appBarData struct {
 	cbSize           uint32
 	hWnd             uintptr
 	uCallbackMessage uint32
 	uEdge            uint32
-	rc               struct{ left, top, right, bottom int32 }
+	rc               winRect
 	lParam           uintptr
 }
 
@@ -101,7 +105,63 @@ func dock(h uintptr) *appBarData {
 	procSHAppBarMessage.Call(abmSetPos, uintptr(unsafe.Pointer(abd)))
 	procSetWindowPos.Call(h, hwndTopmost, uintptr(abd.rc.left), uintptr(abd.rc.top),
 		uintptr(abd.rc.right-abd.rc.left), uintptr(abd.rc.bottom-abd.rc.top), swpNoActivate|swpFrameChanged|swpShowWindow)
+	fit(h, abd.rc)
 	return abd
+}
+
+// pageRect: where the page shows inside Chromium's window h, in screen
+// units: Chromium's render widget window covers exactly the page.
+func pageRect(h uintptr) (winRect, bool) {
+	var found uintptr
+	cb := windows.NewCallback(func(c windows.HWND, _ uintptr) uintptr {
+		buf := make([]uint16, 64)
+		procGetClassNameW.Call(uintptr(c), uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf)))
+		if windows.UTF16ToString(buf) == "Chrome_RenderWidgetHostHWND" {
+			found = uintptr(c)
+			return 0
+		}
+		return 1
+	})
+	procEnumChildWindows.Call(h, cb, 0)
+	if found == 0 {
+		return winRect{}, false
+	}
+	var r winRect
+	if ok, _, _ := procGetWindowRect.Call(found, uintptr(unsafe.Pointer(&r))); ok == 0 || r.bottom <= r.top {
+		return winRect{}, false
+	}
+	return r, true
+}
+
+// fitted: the window rect that puts the page of a window at w, whose
+// page is at p, exactly on want. Chromium draws its own title bar inside
+// the window, so taking the native frame away leaves it there: the
+// window grows by it and its title bar goes above the screen's edge.
+func fitted(w, p, want winRect) winRect {
+	return winRect{
+		left:   want.left - (p.left - w.left),
+		top:    want.top - (p.top - w.top),
+		right:  want.right + (w.right - p.right),
+		bottom: want.bottom + (w.bottom - p.bottom),
+	}
+}
+
+// fit moves h so that only its page shows, on the app bar's rect.
+func fit(h uintptr, want winRect) {
+	p, ok := pageRect(h)
+	if !ok {
+		return
+	}
+	var w winRect
+	if r, _, _ := procGetWindowRect.Call(h, uintptr(unsafe.Pointer(&w))); r == 0 {
+		return
+	}
+	if p == want {
+		return
+	}
+	f := fitted(w, p, want)
+	procSetWindowPos.Call(h, hwndTopmost, uintptr(f.left), uintptr(f.top),
+		uintptr(f.right-f.left), uintptr(f.bottom-f.top), swpNoActivate|swpShowWindow)
 }
 
 func undock(abd *appBarData) {
@@ -135,6 +195,7 @@ func dockBar(stop <-chan struct{}) {
 			return
 		case <-time.After(2 * time.Second):
 		}
+		fit(h, abd.rc) // the page shows late, or Chromium sized it again
 	}
 	logBar("closed")
 }
