@@ -425,3 +425,65 @@ func TestFSMoveToAnotherFileSystem(t *testing.T) {
 		t.Fatal("original not in the Trash")
 	}
 }
+
+// LOCAL-1: with under=, only that folder and nothing through a link,
+// even a link that stays in the home folder; writes never replace.
+func TestFSUnderKeepsToTheFolder(t *testing.T) {
+	w := newFSWorld(t)
+	vy := filepath.Join(w.home, "Desktop", "Vythos")
+	must(t, os.MkdirAll(filepath.Join(vy, "sub"), 0o755))
+	must(t, os.WriteFile(filepath.Join(vy, "01.jpg"), []byte("jpg"), 0o644))
+	must(t, os.WriteFile(filepath.Join(vy, "sub", "02.jpg"), []byte("jpg"), 0o644))
+	must(t, os.Symlink(filepath.Join(w.home, "Documents"), filepath.Join(vy, "docs")))
+	must(t, os.Symlink(filepath.Join(w.home, "Documents", "a.txt"), filepath.Join(vy, "a.txt")))
+	must(t, os.Symlink(vy, filepath.Join(w.home, "Desktop", "VyLink")))
+	u := "&under=" + url.QueryEscape("/home/Desktop/Vythos")
+	get := func(call, v, extra string) *httptest.ResponseRecorder {
+		return w.req("GET", fsPrefix+call+"?path="+url.QueryEscape(v)+extra, nil)
+	}
+	// without under the links inside the home folder are shown, as before
+	if l, _ := w.list("/home/Desktop/Vythos"); names(l) != "01.jpg,a.txt,docs,sub" {
+		t.Fatalf("plain list %s", names(l))
+	}
+	rec := get("list", "/home/Desktop/Vythos", u)
+	var l []entry
+	_ = json.Unmarshal(rec.Body.Bytes(), &l)
+	if rec.Code != 200 || names(l) != "01.jpg,sub" {
+		t.Fatalf("under list %d %s", rec.Code, rec.Body.String())
+	}
+	if rec := get("raw", "/home/Desktop/Vythos/sub/02.jpg", u); rec.Code != 200 || rec.Body.String() != "jpg" {
+		t.Fatalf("read inside: %d", rec.Code)
+	}
+	for _, v := range []string{"/home/Desktop/Vythos/a.txt", "/home/Desktop/Vythos/docs/a.txt"} {
+		if rec := get("raw", v, u); rec.Code != 403 || !strings.Contains(rec.Body.String(), `"link"`) {
+			t.Errorf("%s through a link: %d %s", v, rec.Code, rec.Body.String())
+		}
+	}
+	for _, v := range []string{"/home/Documents/a.txt", "/home/Desktop/Vythos2", "/home/Desktop"} {
+		if rec := get("raw", v, u); rec.Code != 403 || !strings.Contains(rec.Body.String(), "notAllowedRoot") {
+			t.Errorf("%s outside: %d %s", v, rec.Code, rec.Body.String())
+		}
+	}
+	if rec := get("list", "/home/Desktop/VyLink", "&under="+url.QueryEscape("/home/Desktop/VyLink")); rec.Code != 403 {
+		t.Errorf("a root that is a link: %d", rec.Code)
+	}
+	if rec := get("stat", "/home/Desktop/Vythos/01.jpg", u); rec.Code != 200 {
+		t.Errorf("stat: %d", rec.Code)
+	}
+	if rec := w.put("/home/Desktop/Vythos/01.jpg", "new", "&replace=1"+u); rec.Code != 409 {
+		t.Errorf("replaced with under: %d", rec.Code)
+	}
+	if b, _ := os.ReadFile(filepath.Join(vy, "01.jpg")); string(b) != "jpg" {
+		t.Fatalf("source changed: %q", b)
+	}
+	if rec := w.put("/home/Desktop/Vythos/sub/print.pdf", "pdf", u); rec.Code != 200 {
+		t.Errorf("new file refused: %d %s", rec.Code, rec.Body.String())
+	}
+	if rec := w.put("/home/Desktop/Vythos/docs/x.pdf", "pdf", u); rec.Code != 403 {
+		t.Errorf("written through a link: %d", rec.Code)
+	}
+	b, _ := json.Marshal(opRequest{Op: "trash", Path: "/home/Desktop/Vythos/01.jpg"})
+	if rec := w.req("POST", fsPrefix+"op?under="+url.QueryEscape("/home/Desktop/Vythos"), bytes.NewReader(b)); rec.Code != 400 {
+		t.Errorf("op with under: %d", rec.Code)
+	}
+}

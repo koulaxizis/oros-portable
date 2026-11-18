@@ -69,6 +69,8 @@ On [orOS USB](https://github.com/koulaxizis/oros-usb) (the live stick and orOS i
 | `POST op` `{op, path, to, root, id, dev}` | `mkdir`, `rename`, `copy`, `move`, `trash`, `restore`, `purge`, `mount`, `unmount`, `recyclebin` (Windows) |
 | `GET trash`, `GET disks` | the Trash items, the disks that can be opened |
 
+**`under=<folder>` (orOS local folders for Claude, LOCAL-1):** on `list`, `stat` and `raw` (GET and PUT) the path must be that folder or inside it (else 403 `notAllowedRoot`), and neither the folder nor any existing part below it may be a symbolic link or a junction (403 `link`); listings leave links out, and a PUT never replaces a file even with `replace=1`. Any other call with `under` is refused. orOS sends it for every read and write of a folder the owner opened for Claude.
+
 ### Users on one computer or stick
 
 Several people can share one stick or one installed orOS, each with their own orOS: their own data, password, sync account and settings (`launcher/users.go`, `usersapi.go`, `session.go`, sign-in window in `launcher/login/`). Each user is a browser profile of their own (`--user-data-dir`), so orOS and its encrypted sync work unchanged and one user never sees another's data.

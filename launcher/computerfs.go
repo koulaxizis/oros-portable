@@ -213,6 +213,10 @@ var (
 	errNotFound = fsErr(http.StatusNotFound, "notfound", "not found")
 	errHidden   = fsErr(http.StatusForbidden, "denied", "this place is not shown")
 	errBadPath  = fsErr(http.StatusBadRequest, "badpath", "bad path")
+	// LOCAL-1 (?under=): outside the folder the owner opened for Claude,
+	// or through a symbolic link or junction below it.
+	errOutside = fsErr(http.StatusForbidden, "notAllowedRoot", "not inside the folder opened for Claude")
+	errLink    = fsErr(http.StatusForbidden, "link", "a symbolic link or junction is never followed here")
 )
 
 func mapErr(err error) *fsError {
@@ -455,6 +459,66 @@ func (c *computerFS) stat(v string) (entry, error) {
 	return toEntry(p.vpath, fi), nil
 }
 
+// underCheck (LOCAL-1): v is the folder under or inside it, and neither
+// that folder nor any existing part of v below it is a symbolic link or
+// a junction (Lstat; Windows reports a junction as a link or, with
+// newer Go, as irregular). The last parts may not exist yet (a write).
+func (c *computerFS) underCheck(under, v string) error {
+	u, err := c.resolve(under)
+	if err != nil {
+		return err
+	}
+	if u.real == "" {
+		return errBadPath
+	}
+	p, err := c.resolve(v)
+	if err != nil {
+		return err
+	}
+	if p.vpath != u.vpath && !strings.HasPrefix(p.vpath, u.vpath+"/") {
+		return errOutside
+	}
+	cur := u.real
+	parts := []string{""}
+	if rel := strings.TrimPrefix(p.vpath, u.vpath); rel != "" {
+		parts = append(parts, strings.Split(strings.TrimPrefix(rel, "/"), "/")...)
+	}
+	for _, s := range parts {
+		if s != "" {
+			cur = filepath.Join(cur, s)
+		}
+		fi, err := os.Lstat(cur)
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if fi.Mode()&(fs.ModeSymlink|fs.ModeIrregular) != 0 {
+			return errLink
+		}
+	}
+	return nil
+}
+
+// noLinks leaves out the entries of folder v that are links or
+// junctions (LOCAL-1 listings).
+func (c *computerFS) noLinks(v string, l []entry) []entry {
+	p, err := c.resolve(v)
+	if err != nil || p.real == "" {
+		return []entry{}
+	}
+	out := l[:0]
+	for _, e := range l {
+		fi, err := os.Lstat(filepath.Join(p.real, e.Name))
+		if err != nil || fi.Mode()&(fs.ModeSymlink|fs.ModeIrregular) != 0 {
+			continue
+		}
+		out = append(out, e)
+	}
+	return out
+}
+
 // writable resolves v for a change: a real place, not a root itself.
 func (c *computerFS) writable(v string) (place, error) {
 	p, err := c.resolve(v)
@@ -670,6 +734,19 @@ func (c *computerFS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	q := r.URL.Query()
+	// LOCAL-1: orOS's local folders for Claude pass the folder the owner
+	// opened as under=; the path must be inside it and nothing below it
+	// may be a link. A write with under never replaces a file.
+	under := q.Get("under")
+	if under != "" && (name == "list" || name == "stat" || name == "raw") {
+		if err := c.underCheck(under, q.Get("path")); err != nil {
+			writeErr(w, err)
+			return
+		}
+	} else if under != "" {
+		writeErr(w, errBadPath)
+		return
+	}
 	switch {
 	case name == "roots" && r.Method == http.MethodGet:
 		home := c.rootInfo("/home", "home", c.homeDir())
@@ -680,6 +757,9 @@ func (c *computerFS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			writeErr(w, err)
 			return
+		}
+		if under != "" {
+			l = c.noLinks(q.Get("path"), l)
 		}
 		writeJSON(w, 200, l)
 	case name == "stat" && r.Method == http.MethodGet:
@@ -767,7 +847,7 @@ func (c *computerFS) putRaw(w http.ResponseWriter, r *http.Request) {
 	ifm, _ := strconv.ParseInt(q.Get("ifmtime"), 10, 64)
 	done := c.begin(p)
 	defer done()
-	n, _, err := writeAtomic(p.real, r.Body, q.Get("replace") == "1", ifm, 0o644)
+	n, _, err := writeAtomic(p.real, r.Body, q.Get("replace") == "1" && q.Get("under") == "", ifm, 0o644)
 	if err != nil {
 		writeErr(w, err)
 		return

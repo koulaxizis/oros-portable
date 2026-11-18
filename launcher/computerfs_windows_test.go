@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -113,5 +114,40 @@ func TestWindowsDiskListPairsWithRoots(t *testing.T) {
 		if v.Mount != "/disks/"+v.Path[:1] || !strings.Contains(v.Label, v.Path) {
 			t.Errorf("volume %+v does not pair with /disks", v)
 		}
+	}
+}
+
+// LOCAL-1: a junction below the folder opened for Claude is never
+// followed, a plain folder is.
+func TestWindowsUnderJunction(t *testing.T) {
+	home := t.TempDir()
+	vy, other := filepath.Join(home, "Vythos"), filepath.Join(home, "Other")
+	for _, d := range []string{filepath.Join(vy, "sub"), other} {
+		if err := os.MkdirAll(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(other, "x.jpg"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("cmd", "/c", "mklink", "/J", filepath.Join(vy, "j"), other).CombinedOutput(); err != nil {
+		t.Fatalf("mklink /J: %v %s", err, out)
+	}
+	c := newComputerFS(home, hostMedia(), "")
+	if err := c.underCheck("/home/Vythos", "/home/Vythos/sub"); err != nil {
+		t.Fatalf("plain folder: %v", err)
+	}
+	if err := c.underCheck("/home/Vythos", "/home/Vythos/j/x.jpg"); err != errLink {
+		t.Fatalf("through a junction: %v", err)
+	}
+	if err := c.underCheck("/home/Vythos/j", "/home/Vythos/j"); err != errLink {
+		t.Fatalf("a junction as the folder: %v", err)
+	}
+	if err := c.underCheck("/home/Vythos", "/home/Other/x.jpg"); err != errOutside {
+		t.Fatalf("outside: %v", err)
+	}
+	p, _ := c.resolve("/home/Vythos")
+	if l := c.noLinks("/home/Vythos", []entry{{Name: "j"}, {Name: "sub"}}); len(l) != 1 || l[0].Name != "sub" || p.real == "" {
+		t.Fatalf("listing: %+v", l)
 	}
 }
