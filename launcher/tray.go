@@ -102,6 +102,12 @@ func (t *trayApp) ready() {
 	systray.SetOnTapped(t.openQuick)
 	quick := systray.AddMenuItem(word("Add or search", "Προσθήκη ή αναζήτηση", "Hinzufügen oder suchen"), "")
 	open := systray.AddMenuItem(word("Open orOS", "Άνοιγμα orOS", "orOS öffnen"), "")
+	// orOS in its own window (webwin.go): a separate orOS.exe that shows
+	// it in WebView2, with its own data like another device of the owner
+	var own *systray.MenuItem
+	if webWinSupported {
+		own = systray.AddMenuItem(word("orOS in its own window", "Το orOS σε δικό του παράθυρο", "orOS in eigenem Fenster"), "")
+	}
 	swap := systray.AddMenuItem(word("Switch user", "Αλλαγή χρήστη", "Benutzer wechseln"), "")
 	go func() { // shown only while there are users (users.go)
 		for {
@@ -125,6 +131,13 @@ func (t *trayApp) ready() {
 	auto := systray.AddMenuItemCheckbox(word("Start with the computer", "Εκκίνηση με τον υπολογιστή", "Mit dem Computer starten"), "", autostartOn())
 	systray.AddSeparator()
 	quit := systray.AddMenuItem(word("Quit", "Έξοδος", "Beenden"), "")
+	if own != nil {
+		go func() {
+			for range own.ClickedCh {
+				openOwnWindow()
+			}
+		}()
+	}
 	barClicks := make(chan struct{})
 	if bar != nil {
 		go func() {
@@ -531,4 +544,17 @@ func trayCommand() string {
 		exe = r
 	}
 	return exe
+}
+
+// openOwnWindow starts "orOS.exe window" on its own: the tray keeps serving,
+// the window's process finds the server running and only shows the window.
+func openOwnWindow() {
+	exe, err := os.Executable()
+	if err != nil {
+		log.Printf("own window: %v", err)
+		return
+	}
+	if err := exec.Command(exe, "window").Start(); err != nil {
+		log.Printf("own window: %v", err)
+	}
 }

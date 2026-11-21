@@ -104,6 +104,8 @@ func main() {
 			return // the setup of a new version takes over
 		}
 		run(lay)
+	case "window": // orOS in its own window (WebView2, Windows; webwin.go)
+		runOwnWindow(lay)
 	case "tray":
 		runTray(lay)
 	case "quick":
@@ -203,6 +205,29 @@ func run(lay layout) {
 // server up until the browser is done with the profile. When another
 // launcher (a window, the tray) serves already, it only opens the window.
 func runWindow(lay layout, appDir, url string, extra ...string) {
+	runWindowWith(lay, appDir, url, launchBrowser, extra...)
+}
+
+// runOwnWindow: like run, in orOS's own WebView2 window; where that cannot
+// open, the browser window as always.
+func runOwnWindow(lay layout) {
+	appDir := lay.appDir()
+	if _, err := os.Stat(filepath.Join(appDir, "index.html")); err != nil {
+		fail("The app folder is missing next to the launcher: " + appDir)
+	}
+	runWindowWith(lay, appDir, appURL, func(ul layout, url string, extra ...string) error {
+		if !webWinSupported {
+			return launchBrowser(ul, url, extra...)
+		}
+		if err := launchWebWindow(ul, url, extra...); err != nil {
+			log.Printf("own window: %v; opening the browser window", err)
+			return launchBrowser(ul, url, extra...)
+		}
+		return nil
+	})
+}
+
+func runWindowWith(lay layout, appDir, url string, launch launchFunc, extra ...string) {
 	srv, err := claimPort(appDir)
 	if err != nil {
 		return // claimPort told the user
@@ -210,7 +235,7 @@ func runWindow(lay layout, appDir, url string, extra ...string) {
 	startTrayAlongside(lay) // installed on Windows: the tray icon too (traystart.go)
 	if srv == nil {
 		log.Printf("server already running, opening a window only")
-		_ = runSession(lay, url, extra, launchBrowser)
+		_ = runSession(lay, url, extra, launch)
 		return
 	}
 	defer shutdown(srv)
@@ -222,7 +247,7 @@ func runWindow(lay layout, appDir, url string, extra ...string) {
 	checkUpdatesLater(lay)
 	// runSession picks whose profile opens (session.go): without users,
 	// the data folder's, as always.
-	if err := runSession(lay, url, extra, launchBrowser); err != nil {
+	if err := runSession(lay, url, extra, launch); err != nil {
 		fail(err.Error())
 	}
 	log.Printf("browser closed; data is saved")
