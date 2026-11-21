@@ -319,3 +319,26 @@ func TestUpdateLogStaysSmall(t *testing.T) {
 		t.Fatalf("update.log is %d bytes", len(b))
 	}
 }
+
+// Chris 2026-11-21: a downloaded orOS swaps in while a window is open
+// (stagedAppWaiting), only a new program waits for no window.
+func TestStagedAppWaitingNeedsAnIndex(t *testing.T) {
+	d := t.TempDir()
+	lay := layout{root: d, data: d, updates: d, installed: true}
+	if stagedAppWaiting(lay) {
+		t.Fatal("nothing staged yet")
+	}
+	next := stagedAppDir(lay)
+	if err := os.MkdirAll(next, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if stagedAppWaiting(lay) {
+		t.Fatal("a half-unpacked folder without index.html is not an app")
+	}
+	if err := os.WriteFile(filepath.Join(next, "index.html"), []byte("<!doctype html>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !stagedAppWaiting(lay) {
+		t.Fatal("a staged app with index.html is waiting")
+	}
+}

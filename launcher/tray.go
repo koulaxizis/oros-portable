@@ -275,6 +275,12 @@ func (t *trayApp) barOpen() bool {
 	return t.barStop != nil
 }
 
+// stagedAppWaiting: a downloaded orOS (not a program) is ready to swap in.
+func stagedAppWaiting(lay layout) bool {
+	_, err := os.Stat(filepath.Join(stagedAppDir(lay), "index.html"))
+	return err == nil
+}
+
 // updateWaiting: a downloaded orOS or a new program waits for no window.
 func (t *trayApp) updateWaiting() bool {
 	if _, err := os.Stat(stagedAppDir(t.lay)); err == nil {
@@ -370,6 +376,16 @@ func (t *trayApp) maintain() {
 			// (it comes back by itself in 30 s) so a waiting update can
 			// apply while no other window is open.
 			t.closeBarFor(15 * time.Second)
+		}
+		if serving && !t.opening.Load() && autoUpdatesOn(t.lay) && t.windowOpen() && stagedAppWaiting(t.lay) {
+			// Chris 2026-11-21: a window left open for days kept orOS
+			// (and orOS Gate on it) on an old version. The app's files
+			// swap under the open window; its service worker sees the
+			// new sw.js within the hour and reloads by itself. Only a new
+			// program still waits for no window.
+			applyStagedApp(t.lay)
+			t.dir.Store(t.lay.appDir())
+			continue
 		}
 		if !serving || t.windowOpen() || t.opening.Load() || !autoUpdatesOn(t.lay) {
 			continue
