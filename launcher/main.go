@@ -348,6 +348,14 @@ func newDirHandler(dir func() string) http.Handler {
 			usersAPI.ServeHTTP(w, r)
 			return
 		}
+		if r.URL.Path == updatePath {
+			if updAPI == nil {
+				http.NotFound(w, r)
+				return
+			}
+			updAPI.ServeHTTP(w, r)
+			return
+		}
 		if r.URL.Path == gateHostPath {
 			if gateAPI == nil {
 				http.NotFound(w, r)
