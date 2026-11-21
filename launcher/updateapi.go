@@ -15,16 +15,14 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"sync/atomic"
 )
 
 const updatePath = "/__oros/update"
 
 type updateAPI struct {
-	lay     layout
-	running atomic.Bool
-	fetch   func(layout) error // checkAppUpdate (tests replace it)
-	apply   func(layout)       // applyStagedApp
+	lay   layout
+	fetch func(layout) error // checkAppUpdate (tests replace it)
+	apply func(layout)       // applyStagedApp
 }
 
 func newUpdateAPI(lay layout) *updateAPI {
@@ -41,7 +39,7 @@ func (a *updateAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"commit":  shortSHA(appCommit(a.lay.appDir())),
 			"staged":  stagedAppWaiting(a.lay),
 			"auto":    autoUpdatesOn(a.lay),
-			"running": a.running.Load(),
+			"running": updateBusy.Load(),
 		})
 	case http.MethodPost:
 		if r.Header.Get("X-Oros-Gate") != "1" || r.Header.Get("Sec-Fetch-Site") != "same-origin" ||
@@ -53,12 +51,12 @@ func (a *updateAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, `{"error":"off"}`, http.StatusConflict)
 			return
 		}
-		if !a.running.CompareAndSwap(false, true) {
+		if !updateBusy.CompareAndSwap(false, true) {
 			_, _ = w.Write([]byte(`{"ok":true,"already":true}`))
 			return
 		}
 		go func() {
-			defer a.running.Store(false)
+			defer updateBusy.Store(false)
 			err := a.fetch(a.lay)
 			if err != nil {
 				log.Printf("update asked from orOS: %v", err)

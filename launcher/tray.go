@@ -128,6 +128,7 @@ func (t *trayApp) ready() {
 	t.driveMenu()
 	t.bridgeMenu()
 	systray.AddSeparator()
+	check := systray.AddMenuItem(checkUpdatesTitle(false), "")
 	auto := systray.AddMenuItemCheckbox(word("Start with the computer", "Εκκίνηση με τον υπολογιστή", "Mit dem Computer starten"), "", autostartOn())
 	systray.AddSeparator()
 	quit := systray.AddMenuItem(word("Quit", "Έξοδος", "Beenden"), "")
@@ -171,6 +172,8 @@ func (t *trayApp) ready() {
 				t.open(appURL)
 			case <-swap.ClickedCh:
 				t.switchUser()
+			case <-check.ClickedCh:
+				go t.checkForUpdates(check)
 			case <-auto.ClickedCh:
 				on := !autostartOn()
 				if err := setAutostart(on, trayCommand()); err != nil {
@@ -381,6 +384,9 @@ func (t *trayApp) maintain() {
 	for {
 		checkUpdatesLater(t.lay)
 		time.Sleep(maintainEvery)
+		if updateBusy.Load() {
+			continue // "Check for updates" or /__oros/update is swapping orOS
+		}
 		t.mu.Lock()
 		serving := t.srv != nil
 		t.mu.Unlock()
