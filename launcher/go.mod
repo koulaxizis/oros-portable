@@ -6,12 +6,14 @@ require (
 	fyne.io/systray v1.12.0
 	github.com/ProtonMail/go-crypto v1.3.0
 	github.com/godbus/dbus/v5 v5.1.0
+	github.com/jchv/go-webview2 v0.0.0-20260205173254-56598839c808
+	github.com/klauspost/compress v1.18.0
 	github.com/ulikunitz/xz v0.5.15
 	golang.org/x/sys v0.30.0
 )
 
 require (
 	github.com/cloudflare/circl v1.6.0 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
+	github.com/jchv/go-winloader v0.0.0-20250406163304-c1995be93bd1 // indirect
 	golang.org/x/crypto v0.33.0 // indirect
 )
