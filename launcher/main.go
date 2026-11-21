@@ -115,10 +115,11 @@ func main() {
 	case "serve":
 		serveOnly(lay)
 	case "update":
-		if err := update(lay.updates); err != nil {
-			fail("Update failed: " + err.Error())
+		msg, err := updateNow(lay)
+		if err != nil {
+			fail(updateFailedText(err))
 		}
-		notify("orOS was updated. Start " + appTitle + " again to use the new version.")
+		notify(msg)
 	case "remove-menu":
 		removeAppImageMenu()
 	case "version", "--version":

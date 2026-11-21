@@ -27,6 +27,12 @@ func notify(msg string) {
 	messageBox(msg, 0x40) // MB_ICONINFORMATION
 }
 
+// warn shows an error without ending the program (the tray goes on).
+func warn(msg string) {
+	log.Print(msg)
+	messageBox(msg, 0x10) // MB_ICONERROR
+}
+
 func fail(msg string) {
 	log.Print(msg)
 	messageBox(msg, 0x10) // MB_ICONERROR

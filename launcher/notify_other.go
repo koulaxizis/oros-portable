@@ -13,6 +13,12 @@ func notify(msg string) {
 	desktopMessage("info", msg)
 }
 
+// warn shows an error without ending the program (the tray goes on).
+func warn(msg string) {
+	log.Print(msg)
+	desktopMessage("error", msg)
+}
+
 func fail(msg string) {
 	log.Print(msg)
 	desktopMessage("error", msg)
