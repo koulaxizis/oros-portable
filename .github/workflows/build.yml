@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.26.11"
       - run: cd launcher && go vet ./... && go test ./...
       - run: cd tools/sticktest && go vet ./... && go test ./...
       - name: Encrypted users with real fscrypt (ext4 on a loop device, as a normal user)
@@ -80,7 +80,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.26.11"
       - run: cd launcher; go vet ./...; if ($LASTEXITCODE) { exit 1 }; go test -run 'TestWindows' -v .
         shell: pwsh
       - name: Tor button with the real Tor Browser (silent install, nothing left outside its folder)
@@ -150,7 +150,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.26.11"
       - name: Build
         env:
           GH_TOKEN: ${{ github.token }}
