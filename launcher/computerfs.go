@@ -752,6 +752,9 @@ func (c *computerFS) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		home := c.rootInfo("/home", "home", c.homeDir())
 		// os tells orOS Files which Trash this is (Windows: the Recycle Bin).
 		writeJSON(w, 200, map[string]any{"home": home, "disks": c.disks(), "os": runtime.GOOS, "under": true}) // under: LOCAL-1 checks
+	case name == "drive" && r.Method == http.MethodGet:
+		// DRIVE-OPEN (drivemirrors.go): folders orOS Drive mirrors here.
+		writeJSON(w, 200, map[string]any{"folders": c.driveMirrors()})
 	case name == "list" && r.Method == http.MethodGet:
 		l, err := c.list(q.Get("path"))
 		if err != nil {
