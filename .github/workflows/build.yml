@@ -69,7 +69,9 @@ jobs:
           ! curl -s --max-time 2 http://127.0.0.1:11434/api/version
       - name: Stick script test (loop devices)
         run: |
-          sudo apt-get update -q && sudo apt-get install -y -q ntfs-3g
+          # a third-party source on the runner image (packages.microsoft.com answered 403 on 2026-11-27) must not stop the build; the install still fails if Ubuntu's own lists are missing
+          sudo apt-get update -q || echo "apt-get update had errors; installing anyway"
+          sudo apt-get install -y -q ntfs-3g
           sudo scripts/test-make-sticks.sh
 
   launcher-windows:
@@ -173,7 +175,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ inputs.tag }}
         run: |
-          sudo apt-get update -q && sudo apt-get install -y -q desktop-file-utils zsync
+          # a third-party source on the runner image (packages.microsoft.com answered 403 on 2026-11-27) must not stop the build; the install still fails if Ubuntu's own lists are missing
+          sudo apt-get update -q || echo "apt-get update had errors; installing anyway"
+          sudo apt-get install -y -q desktop-file-utils zsync
           # a release must carry orOS Drive 0.5.0+ (managed by orOS); a test build may go without
           case "$GITHUB_REF" in refs/tags/v*) export OROS_REQUIRE_DRIVE=1;; esac
           if [ -n "$TAG" ]; then export OROS_REQUIRE_DRIVE=1; fi
