@@ -365,6 +365,10 @@ func newDirHandler(dir func() string) http.Handler {
 			gateAPI.ServeHTTP(w, r)
 			return
 		}
+		if strings.HasPrefix(r.URL.Path, mailPrefix) {
+			mailAPI.ServeHTTP(w, r) // orOS Mail's local servers (mailsock.go)
+			return
+		}
 		if strings.HasPrefix(r.URL.Path, fsPrefix) {
 			if fsAPI == nil {
 				http.NotFound(w, r)
@@ -397,8 +401,11 @@ func newDirHandler(dir func() string) http.Handler {
 		}
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
-		if fsAPI != nil && (strings.HasSuffix(r.URL.Path, "/") || strings.HasSuffix(r.URL.Path, ".html")) {
-			fsAPI.setCookie(w)
+		if strings.HasSuffix(r.URL.Path, "/") || strings.HasSuffix(r.URL.Path, ".html") {
+			if fsAPI != nil {
+				fsAPI.setCookie(w)
+			}
+			mailAPI.setCookie(w)
 		}
 		http.FileServer(http.Dir(dir())).ServeHTTP(w, r)
 	})

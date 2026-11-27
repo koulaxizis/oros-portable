@@ -98,7 +98,7 @@ func TestFSOffByDefault(t *testing.T) {
 	if w := get(h, "localhost:47800", fsPrefix+"roots"); w.Code != 404 {
 		t.Fatalf("got %d", w.Code)
 	}
-	if w := get(h, "localhost:47800", "/"); w.Header().Get("Set-Cookie") != "" {
+	if w := get(h, "localhost:47800", "/"); strings.Contains(strings.Join(w.Header().Values("Set-Cookie"), "\n"), fsCookie+"=") {
 		t.Fatal("cookie set while off")
 	}
 }
