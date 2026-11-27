@@ -132,3 +132,23 @@ func TestBridgeLinesNeverEmpty(t *testing.T) {
 		}
 	}
 }
+
+// Drive 0.6+ tells how far its uploads are and how many deletions wait;
+// an older Drive still reads "Syncing…".
+func TestDriveTextProgress(t *testing.T) {
+	t.Setenv("LANG", "en_US.UTF-8")
+	t.Setenv("LC_ALL", "")
+	t.Setenv("LC_MESSAGES", "")
+	s := driveSummary{State: "sync", Progress: &driveProgress{Files: 22600, FilesDone: 120, Bytes: 43 << 30, BytesDone: 1288490188}, Held: 748}
+	if got := driveText(s, nil); got != "Uploading 120 of 22600 (1.2 GB of 43 GB) · 748 deletions wait in its settings" {
+		t.Fatal(got)
+	}
+	if got := driveText(driveSummary{State: "sync"}, nil); got != "Syncing…" {
+		t.Fatal(got)
+	}
+	t.Setenv("LANG", "el_GR.UTF-8")
+	s.Held = 0
+	if got := driveText(s, nil); got != "Ανεβαίνουν 120 από 22600 (1,2 GB από 43 GB)" {
+		t.Fatal(got)
+	}
+}

@@ -27,6 +27,7 @@ import (
 	"regexp"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -163,6 +164,17 @@ type driveSummary struct {
 	Folders  int    `json:"folders"`
 	Managed  bool   `json:"managed"`
 	Update   string `json:"update"`
+	// Drive 0.6+: this pass's uploads (only while syncing) and the
+	// deletions its Explorer folder waits to be allowed.
+	Progress *driveProgress `json:"progress"`
+	Held     int            `json:"held"`
+}
+
+type driveProgress struct {
+	Files     int   `json:"files"`
+	FilesDone int   `json:"filesDone"`
+	Bytes     int64 `json:"bytes"`
+	BytesDone int64 `json:"bytesDone"`
 }
 
 type driveInstance struct {
@@ -349,15 +361,48 @@ func driveText(s driveSummary, err error) string {
 	if err != nil {
 		return word("Not running", "Δεν τρέχει", "Läuft nicht")
 	}
+	t := driveState(s)
+	if s.Held > 0 {
+		t += fmt.Sprintf(word(" · %d deletions wait in its settings", " · %d διαγραφές περιμένουν στις ρυθμίσεις του", " · %d Löschungen warten in den Einstellungen"), s.Held)
+	}
+	return t
+}
+
+func driveState(s driveSummary) string {
 	switch s.State {
 	case "warn":
 		return word("Open the settings to set up", "Άνοιξε τις ρυθμίσεις για να ξεκινήσεις", "Zum Einrichten die Einstellungen öffnen")
 	case "paused":
 		return word("Paused", "Σε παύση", "Pausiert")
 	case "sync":
+		if p := s.Progress; p != nil && p.Files > 0 {
+			return fmt.Sprintf(word("Uploading %d of %d (%s of %s)", "Ανεβαίνουν %d από %d (%s από %s)", "Lädt hoch: %d von %d (%s von %s)"),
+				p.FilesDone, p.Files, driveSize(p.BytesDone), driveSize(p.Bytes))
+		}
 		return word("Syncing…", "Συγχρονίζει…", "Synchronisiert…")
 	case "bad":
 		return word("Needs attention", "Θέλει προσοχή", "Braucht Aufmerksamkeit")
 	}
 	return word("Up to date", "Ενημερωμένο", "Aktuell")
+}
+
+// driveSize: 512 B, 3.4 MB, 43 GB (a decimal comma in Greek and German).
+func driveSize(n int64) string {
+	units := []string{"B", "KB", "MB", "GB", "TB"}
+	f, i := float64(n), 0
+	for f >= 1024 && i < len(units)-1 {
+		f /= 1024
+		i++
+	}
+	t := fmt.Sprintf("%.0f %s", f, units[i])
+	if i > 0 && f < 10 {
+		t = fmt.Sprintf("%.1f %s", f, units[i])
+		if l := systemLang(); l == "el" || l == "de" {
+			t = strings.Replace(t, ".", ",", 1)
+		}
+	}
+	if i == 0 {
+		t = fmt.Sprintf("%d B", n)
+	}
+	return t
 }
