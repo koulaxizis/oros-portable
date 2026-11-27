@@ -73,7 +73,10 @@ foreach ($m in $marks) {
 $noAuto = Get-Content (Join-Path $data 'no-auto-update') -Raw
 
 # The new setup, with the automatic update's own arguments.
-$p = Start-Process $Setup -ArgumentList '/SILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', '/RELAUNCH=tray', '/LOG=upgrade-new.log' -Wait -PassThru
+# Not Start-Process -Wait: that also waits for the tray the setup starts
+# again, which keeps running.
+$p = Start-Process $Setup -ArgumentList '/SILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', '/RELAUNCH=tray', '/LOG=upgrade-new.log' -PassThru
+if (-not $p.WaitForExit(600000)) { Get-Content upgrade-new.log -Tail 30 -ErrorAction SilentlyContinue; throw 'the new setup did not finish in 10 minutes' }
 if ($p.ExitCode) { Get-Content upgrade-new.log -Tail 30; throw "the new setup over $oldVer exited with $($p.ExitCode)" }
 
 # The tray it started again serves the new orOS.
