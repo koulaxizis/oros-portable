@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -218,7 +219,14 @@ func TestMailSockRefusesOthers(t *testing.T) {
 		t.Fatalf("no origin: %d", st)
 	}
 	for _, bad := range []string{
-		"host=imap.example.com&port=993&mode=tls", // never another machine
+		"host=imap.example.com&port=1143&mode=starttls", // a server by name: mail ports only
+		"host=imap.example.com&port=993&mode=starttls",  // ... with their own mode
+		"host=imap.example.com&port=80&mode=tls",
+		"host=imap.example.com&port=993&mode=tls&pin=" + strings.Repeat("a", 64),
+		"host=mail.lan&port=993&mode=tls",
+		"host=nas.local&port=993&mode=tls",
+		"host=10.0.0.1&port=993&mode=tls", // no IP literals but this computer's
+		"host=8.8.8.8&port=993&mode=tls",
 		"host=10.0.0.1&port=1143&mode=starttls",
 		"host=127.0.0.2&port=1143&mode=starttls",
 		"host=127.0.0.1&port=47800&mode=starttls", // never the launcher itself
@@ -334,5 +342,109 @@ func TestMailSockConnectError(t *testing.T) {
 	}
 	if m := ws.control(t); m["t"] != "err" || m["code"] != "connect" {
 		t.Fatalf("want connect, got %v", m)
+	}
+}
+
+// testCA makes a CA and a leaf for name, like a provider's real certificate.
+func testCA(t *testing.T, name string) (*x509.CertPool, tls.Certificate) {
+	t.Helper()
+	caKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	ca := &x509.Certificate{SerialNumber: big.NewInt(7), Subject: pkix.Name{CommonName: "Test CA"},
+		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour),
+		IsCA: true, BasicConstraintsValid: true, KeyUsage: x509.KeyUsageCertSign}
+	caDer, err := x509.CreateCertificate(rand.Reader, ca, ca, &caKey.PublicKey, caKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	caCert, _ := x509.ParseCertificate(caDer)
+	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	leaf := &x509.Certificate{SerialNumber: big.NewInt(8), Subject: pkix.Name{CommonName: name}, DNSNames: []string{name},
+		NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour),
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}}
+	der, err := x509.CreateCertificate(rand.Reader, leaf, caCert, &key.PublicKey, caKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pool := x509.NewCertPool()
+	pool.AddCert(caCert)
+	return pool, tls.Certificate{Certificate: [][]byte{der}, PrivateKey: key}
+}
+
+// A provider's server by name: resolved to a public address (faked here),
+// dialled by that address, the certificate checked against the roots.
+func useRemote(t *testing.T, ip string, port string, roots *x509.CertPool) *[]string {
+	t.Helper()
+	dialled := &[]string{}
+	oldDial, oldLookup, oldRoots := mailAPI.dial, mailAPI.lookup, mailAPI.roots
+	t.Cleanup(func() { mailAPI.dial, mailAPI.lookup, mailAPI.roots = oldDial, oldLookup, oldRoots })
+	mailAPI.lookup = func(ctx context.Context, host string) ([]net.IP, error) { return []net.IP{net.ParseIP(ip)}, nil }
+	mailAPI.dial = func(addr string) (net.Conn, error) {
+		*dialled = append(*dialled, addr)
+		return net.Dial("tcp", "127.0.0.1:"+port)
+	}
+	mailAPI.roots = roots
+	return dialled
+}
+
+func TestMailSockServerByName(t *testing.T) {
+	roots, cert := testCA(t, "imap.example.com")
+	port := fakeMail(t, cert, true)
+	dialled := useRemote(t, "93.184.216.34", port, roots)
+	srv := mailServer(t)
+	ws, st := dialSock(t, srv, "host=imap.example.com&port=993&mode=tls", mailAPI.token, localOrigin)
+	if st != 101 {
+		t.Fatalf("upgrade: %d", st)
+	}
+	if m := ws.control(t); m["t"] != "tls" || m["fp"] != "" {
+		t.Fatalf("want tls, got %v", m)
+	}
+	ws.readText(t, "* OK ready\r\n")
+	ws.send(wsBinary, []byte("d NOOP\r\n"))
+	ws.readText(t, "echo d NOOP\r\n")
+	if len(*dialled) != 1 || (*dialled)[0] != "93.184.216.34:993" {
+		t.Fatalf("dialled %v", *dialled)
+	}
+}
+
+func TestMailSockServerByNameSTARTTLS(t *testing.T) {
+	roots, cert := testCA(t, "smtp.example.com")
+	port := fakeMail(t, cert, false)
+	useRemote(t, "93.184.216.34", port, roots)
+	srv := mailServer(t)
+	ws, _ := dialSock(t, srv, "host=smtp.example.com&port=587&mode=starttls", mailAPI.token, localOrigin)
+	ws.control(t)
+	ws.readText(t, "* OK ready\r\n")
+	ws.send(wsBinary, []byte("a STARTTLS\r\n"))
+	ws.readText(t, "a OK begin TLS\r\n")
+	ws.send(wsText, []byte(`{"t":"starttls"}`))
+	if m := ws.control(t); m["t"] != "tls" {
+		t.Fatalf("want tls, got %v", m)
+	}
+}
+
+func TestMailSockServerByNameRefusals(t *testing.T) {
+	// a certificate for another name, or one the roots do not know
+	roots, cert := testCA(t, "other.example.com")
+	port := fakeMail(t, cert, true)
+	useRemote(t, "93.184.216.34", port, roots)
+	srv := mailServer(t)
+	ws, _ := dialSock(t, srv, "host=imap.example.com&port=993&mode=tls", mailAPI.token, localOrigin)
+	if m := ws.control(t); m["t"] != "err" || m["code"] != "tls" || m["fp"] != "" {
+		t.Fatalf("wrong name: %v", m)
+	}
+	self, _ := selfSigned(t)
+	port2 := fakeMail(t, self, true)
+	useRemote(t, "93.184.216.34", port2, nil)
+	ws, _ = dialSock(t, srv, "host=imap.example.com&port=993&mode=tls", mailAPI.token, localOrigin)
+	if m := ws.control(t); m["code"] != "tls" {
+		t.Fatalf("self-signed: %v", m)
+	}
+	// a name that resolves to this computer or the local network
+	for _, ip := range []string{"127.0.0.1", "192.168.1.10", "10.1.2.3", "100.64.0.1", "169.254.1.1", "::1", "fd00::1", "0.0.0.0"} {
+		dialled := useRemote(t, ip, port, roots)
+		ws, _ = dialSock(t, srv, "host=imap.example.com&port=993&mode=tls", mailAPI.token, localOrigin)
+		if m := ws.control(t); m["code"] != "connect" || len(*dialled) != 0 {
+			t.Fatalf("%s: %v, dialled %v", ip, m, *dialled)
+		}
 	}
 }

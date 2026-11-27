@@ -19,14 +19,24 @@ package main
 // to this server's own, and Sec-Fetch-Site same-origin when the browser
 // sends it.
 //
-// What it can reach: only this computer (127.0.0.1, ::1, "localhost"),
-// never the launcher's own port, never another machine, so it is no open
-// proxy. Every connection must become TLS: mode "tls" handshakes at once,
+// What it can reach (Chris 2026-11-27 «Ναι, μέσω launcher»: Mail for every
+// provider in the orOS on the computer, whose origin the relay does not
+// serve for Mail):
+//   - this computer (127.0.0.1, ::1, "localhost"), any port but the
+//     launcher's own, trusted by pin (a local server such as Bridge);
+//   - a mail server by name on the mail ports only (993 and 465 "tls",
+//     143, 587 and 4190 "starttls"), the name checked like the relay's
+//     validHost (no IP literal, no .local/.lan/... names), every address
+//     it resolves to public (never this computer or the local network),
+//     the certificate checked against the system's roots for that name.
+// So it is no open proxy. Every connection must become TLS: mode "tls" handshakes at once,
 // mode "starttls" lets at most mailPlainUp bytes go to the server and
 // mailPlainDown bytes come back before the page asks for TLS (enough for a
 // greeting, CAPABILITY/EHLO and STARTTLS, not for any other protocol).
 //
-// Certificates: a local mail server has its own self-signed certificate,
+// Certificates: a server by name must show a certificate the system
+// trusts for that name ({"t":"err","code":"tls"} otherwise, no pin). A
+// local mail server has its own self-signed certificate,
 // so trust is by pin. The page passes the SHA-256 of the certificate it
 // trusts (pin); without one, or when the server shows another
 // certificate, the connection ends with {"t":"err","code":"cert-new"} or
@@ -40,6 +50,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"crypto/rand"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -77,9 +88,11 @@ const (
 var mailAPI = newMailSock()
 
 type mailSock struct {
-	token string
-	open  atomic.Int32
-	dial  func(addr string) (net.Conn, error) // tests may replace it
+	token  string
+	open   atomic.Int32
+	dial   func(addr string) (net.Conn, error)                      // tests may replace it
+	lookup func(ctx context.Context, host string) ([]net.IP, error) // tests may replace it
+	roots  *x509.CertPool                                           // nil: the system's
 }
 
 func newMailSock() *mailSock {
@@ -91,6 +104,9 @@ func newMailSock() *mailSock {
 		token: base64.RawURLEncoding.EncodeToString(b),
 		dial: func(addr string) (net.Conn, error) {
 			return net.DialTimeout("tcp", addr, mailDialWait)
+		},
+		lookup: func(ctx context.Context, host string) ([]net.IP, error) {
+			return net.DefaultResolver.LookupIP(ctx, "ip", host)
 		},
 	}
 }
@@ -113,28 +129,104 @@ func (m *mailSock) allowed(r *http.Request) bool {
 
 var mailPinRe = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
-// mailTarget checks the address the page asks for: this computer only.
-func mailTarget(host, portS, mode, pin string) (string, error) {
-	var ip string
-	switch strings.ToLower(host) {
-	case "127.0.0.1", "localhost":
-		ip = "127.0.0.1"
-	case "::1", "[::1]":
-		ip = "::1"
-	default:
-		return "", errors.New("host")
-	}
-	p, err := strconv.Atoi(portS)
-	if err != nil || p < 1 || p > 65535 || p == port || strconv.Itoa(p) != portS {
-		return "", errors.New("port")
-	}
+// The mail ports a server by name may use, with their mode.
+var mailPorts = map[string]string{"993": "tls", "465": "tls", "143": "starttls", "587": "starttls", "4190": "starttls"}
+
+var (
+	mailHostRe  = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$`)
+	mailLocalRe = regexp.MustCompile(`\.(local|localhost|internal|lan|home|arpa|test|invalid)$`)
+)
+
+type mailDest struct {
+	host  string // the name for TLS
+	port  string
+	local bool   // this computer: trust by pin
+	addr  string // local: the address to dial
+}
+
+// mailTarget checks the address the page asks for.
+func mailTarget(host, portS, mode, pin string) (mailDest, error) {
 	if mode != "tls" && mode != "starttls" {
-		return "", errors.New("mode")
+		return mailDest{}, errors.New("mode")
 	}
 	if pin != "" && !mailPinRe.MatchString(pin) {
-		return "", errors.New("pin")
+		return mailDest{}, errors.New("pin")
 	}
-	return net.JoinHostPort(ip, portS), nil
+	p, err := strconv.Atoi(portS)
+	if err != nil || p < 1 || p > 65535 || strconv.Itoa(p) != portS {
+		return mailDest{}, errors.New("port")
+	}
+	h := strings.ToLower(host)
+	switch h {
+	case "127.0.0.1", "localhost":
+		if p == port {
+			return mailDest{}, errors.New("port")
+		}
+		return mailDest{host: "127.0.0.1", port: portS, local: true, addr: net.JoinHostPort("127.0.0.1", portS)}, nil
+	case "::1", "[::1]":
+		if p == port {
+			return mailDest{}, errors.New("port")
+		}
+		return mailDest{host: "::1", port: portS, local: true, addr: net.JoinHostPort("::1", portS)}, nil
+	}
+	h = strings.TrimSuffix(h, ".")
+	if len(h) < 4 || len(h) > 253 || !mailHostRe.MatchString(h) || mailLocalRe.MatchString(h) || net.ParseIP(h) != nil ||
+		strings.Trim(h, "0123456789.") == "" {
+		return mailDest{}, errors.New("host")
+	}
+	if mailPorts[portS] != mode {
+		return mailDest{}, errors.New("port")
+	}
+	if pin != "" {
+		return mailDest{}, errors.New("pin")
+	}
+	return mailDest{host: h, port: portS}, nil
+}
+
+// publicIP: an address on the Internet, never this computer, the local
+// network or a special range.
+func publicIP(ip net.IP) bool {
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified() || ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast() || ip.IsMulticast() {
+		return false
+	}
+	if v4 := ip.To4(); v4 != nil {
+		switch {
+		case v4[0] == 0, v4[0] == 100 && v4[1]&0xc0 == 64, v4[0] == 192 && v4[1] == 0 && v4[2] == 0,
+			v4[0] == 198 && v4[1]&0xfe == 18, v4[0] >= 240:
+			return false // this network, shared (CGNAT), IETF, benchmarking, reserved
+		}
+		return true
+	}
+	return !(ip[0] == 0x20 && ip[1] == 0x01 && ip[2] == 0x0d && ip[3] == 0xb8) // documentation
+}
+
+// connect dials the destination; a name is resolved here and dialled by
+// address, so what was checked is what is reached.
+func (m *mailSock) connect(d mailDest) (net.Conn, error) {
+	if d.local {
+		return m.dial(d.addr)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), mailDialWait)
+	defer cancel()
+	ips, err := m.lookup(ctx, d.host)
+	if err != nil || len(ips) == 0 {
+		return nil, errors.New("lookup")
+	}
+	for _, ip := range ips {
+		if !publicIP(ip) {
+			return nil, errors.New("private")
+		}
+	}
+	var last error
+	for _, ip := range ips {
+		c, err := m.dial(net.JoinHostPort(ip.String(), d.port))
+		if err == nil {
+			return c, nil
+		}
+		last = err
+	}
+	return nil, last
 }
 
 func (m *mailSock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -148,7 +240,7 @@ func (m *mailSock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	pin := q.Get("pin")
-	addr, err := mailTarget(q.Get("host"), q.Get("port"), q.Get("mode"), pin)
+	dest, err := mailTarget(q.Get("host"), q.Get("port"), q.Get("mode"), pin)
 	if err != nil {
 		http.Error(w, "invalid "+err.Error(), http.StatusBadRequest)
 		return
@@ -164,12 +256,12 @@ func (m *mailSock) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return // wsAccept answered
 	}
 	defer ws.close()
-	conn, err := m.dial(addr)
+	conn, err := m.connect(dest)
 	if err != nil {
 		ws.control(map[string]string{"t": "err", "code": "connect"})
 		return
 	}
-	s := &mailSession{ws: ws, raw: conn, conn: conn, pin: pin, host: strings.Trim(q.Get("host"), "[]")}
+	s := &mailSession{ws: ws, raw: conn, conn: conn, pin: pin, host: dest.host, local: dest.local, roots: m.roots}
 	defer func() { s.conn.Close() }()
 	if q.Get("mode") == "tls" {
 		if !s.handshake() {
@@ -188,6 +280,8 @@ type mailSession struct {
 	raw       net.Conn // the TCP connection
 	conn      net.Conn // raw, or the TLS connection over it
 	pin, host string
+	local     bool           // trust by pin; else the system's roots
+	roots     *x509.CertPool // nil: the system's
 	tls       atomic.Bool
 	up, down  int // plain bytes so far (before TLS)
 	upgrading atomic.Bool
@@ -201,6 +295,21 @@ func (s *mailSession) touch() { s.lastIO.Store(time.Now().UnixNano()) }
 // error, which it has reported.
 func (s *mailSession) handshake() bool {
 	var fp string
+	if !s.local {
+		cfg := &tls.Config{ServerName: s.host, MinVersion: tls.VersionTLS12, RootCAs: s.roots}
+		tc := tls.Client(s.raw, cfg)
+		_ = s.raw.SetDeadline(time.Now().Add(15 * time.Second))
+		err := tc.Handshake()
+		_ = s.raw.SetDeadline(time.Time{})
+		if err != nil {
+			s.ws.control(map[string]string{"t": "err", "code": "tls"})
+			return false
+		}
+		s.conn = tc
+		s.tls.Store(true)
+		s.ws.control(map[string]string{"t": "tls"})
+		return true
+	}
 	cfg := &tls.Config{
 		ServerName:         s.host,
 		MinVersion:         tls.VersionTLS12,
