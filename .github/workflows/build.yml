@@ -19,8 +19,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version: "1.26.11"
       - run: cd launcher && go vet ./... && go test ./...
@@ -77,8 +77,8 @@ jobs:
     # hidden folders) need Windows itself.
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version: "1.26.11"
       - run: cd launcher; go vet ./...; if ($LASTEXITCODE) { exit 1 }; go test -run 'TestWindows' -v .
@@ -147,8 +147,8 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version: "1.26.11"
       - name: Build
@@ -186,7 +186,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: scripts/fetch-sources.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: orOS-Portable
           path: |
@@ -200,7 +200,7 @@ jobs:
             out/installers/*.deb
             out/installers/*.sha256
           retention-days: 14
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: windows-setup-files
           path: out/installers/windows
@@ -223,8 +223,8 @@ jobs:
     needs: package
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: windows-setup-files
           path: setup
@@ -268,7 +268,7 @@ jobs:
       - name: Install test (silent install, serve, uninstall)
         shell: pwsh
         run: scripts/test-windows-setup.ps1 (Get-ChildItem setup/orOS-Setup-*.exe).FullName
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: orOS-Setup
           path: setup/orOS-Setup-*
@@ -292,7 +292,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: main
       - name: Manifests
@@ -304,7 +304,7 @@ jobs:
           gh release download "$TAG" --pattern "orOS-Setup-$VERSION.exe.sha256" --dir /tmp/sum
           SHA="$(cut -d' ' -f1 /tmp/sum/*.sha256)"
           scripts/channel-manifests.sh "$VERSION" "$SHA" out/channels
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: winget-manifests
           path: out/channels/winget
@@ -326,7 +326,7 @@ jobs:
     needs: channels
     runs-on: windows-latest
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: winget-manifests
           path: winget
