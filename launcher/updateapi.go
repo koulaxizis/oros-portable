@@ -8,8 +8,9 @@ package main
 //   - GET  /__oros/update: { version, commit, staged, auto, running }.
 //   - POST /__oros/update (same origin, X-Oros-Gate: 1): downloads the
 //     newest orOS now (one at a time) and swaps it in, also under an open
-//     window (its service worker reloads it). Only installed copies with
-//     automatic updates on; a new program still waits for a start.
+//     window (its service worker reloads it). Every copy whose orOS
+//     updates itself (appAutoUpdatesOn: installed, the stick, orOS USB
+//     with persistence); a new program still waits for a start.
 
 import (
 	"encoding/json"
@@ -38,7 +39,7 @@ func (a *updateAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"version": appVersion(a.lay.appDir()),
 			"commit":  shortSHA(appCommit(a.lay.appDir())),
 			"staged":  stagedAppWaiting(a.lay),
-			"auto":    autoUpdatesOn(a.lay),
+			"auto":    appAutoUpdatesOn(a.lay),
 			"running": updateBusy.Load(),
 		})
 	case http.MethodPost:
@@ -47,7 +48,7 @@ func (a *updateAPI) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, `{"error":"forbidden"}`, http.StatusForbidden)
 			return
 		}
-		if !autoUpdatesOn(a.lay) {
+		if !appAutoUpdatesOn(a.lay) {
 			http.Error(w, `{"error":"off"}`, http.StatusConflict)
 			return
 		}

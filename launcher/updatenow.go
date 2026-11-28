@@ -33,14 +33,14 @@ func updateNow(lay layout) (string, error) {
 		if latest == appCommit(lay.appDir()) {
 			return upToDateText(appVersion(lay.appDir())), nil
 		}
-		if lay.installed && latest == appCommit(stagedAppDir(lay)) {
+		if latest == appCommit(stagedAppDir(lay)) {
 			applyStagedApp(lay)
 			if latest == appCommit(lay.appDir()) {
 				return updatedText(appVersion(lay.appDir())), nil
 			}
 		}
 	}
-	if err := updateFetch(lay.updates); err != nil {
+	if err := updateFetch(lay.updates, latest); err != nil {
 		updateLog(lay, "update asked by the owner failed: "+err.Error())
 		return "", err
 	}
@@ -53,7 +53,7 @@ func updateNow(lay layout) (string, error) {
 // removeStaleStaged drops an app.next that is older than what now runs,
 // so the next start does not swap an older orOS back in.
 func removeStaleStaged(lay layout) error {
-	if !lay.installed || !stagedAppWaiting(lay) {
+	if !stagedAppWaiting(lay) {
 		return nil
 	}
 	if compareVersions(appVersion(stagedAppDir(lay)), appVersion(lay.appDir())) > 0 {

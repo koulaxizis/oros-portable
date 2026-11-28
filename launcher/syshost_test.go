@@ -282,9 +282,7 @@ func TestStageUpdateForPortable(t *testing.T) {
 		_, _ = w.Write(body)
 	}))
 	defer srv.Close()
-	oldC, oldU := commitAPI, updateURL
-	commitAPI, updateURL = srv.URL+"/sha", srv.URL+"/main.zip"
-	defer func() { commitAPI, updateURL = oldC, oldU }()
+	fakeOrOSArchive(t, srv.URL)
 
 	if r := updateCheck(lay); r["ok"] != true || r["available"] != true || r["staged"] != false {
 		t.Fatalf("check: %v", r)

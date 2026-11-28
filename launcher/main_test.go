@@ -89,6 +89,7 @@ func writeZip(t *testing.T, files map[string]string) string {
 func TestUnpackStripsRootAndSkipsNonAppFolders(t *testing.T) {
 	z := writeZip(t, map[string]string{
 		"oros-main/index.html":       "x",
+		"oros-main/shell.js":         `var APP_VERSION = "9.0.0";`,
 		"oros-main/notes/index.html": "n",
 		"oros-main/relay/core.js":    "r",
 		"oros-main/tests/a.test.js":  "t",
