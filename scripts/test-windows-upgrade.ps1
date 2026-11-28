@@ -33,6 +33,19 @@ function Wait-Serves([string] $what) {
   Get-Content (Join-Path $data 'launcher.log'), (Join-Path $data 'tray.log') -Tail 20 -ErrorAction SilentlyContinue
   throw "$what does not serve http://localhost:47800/"
 }
+# Test-Marks <when>: both markers there and unchanged, else show what the data folder holds.
+function Test-Marks([string] $when) {
+  foreach ($m in $marks) {
+    $why = if (-not (Test-Path $m)) { 'lost' } elseif ((Get-Content $m -Raw) -ne "kept from orOS $oldVer") { 'changed' } else { '' }
+    if ($why) {
+      Write-Host "data folder ($when):"
+      Get-ChildItem $data -Recurse -Depth 2 -ErrorAction SilentlyContinue | Select-Object -First 60 | ForEach-Object { "  $($_.FullName) $($_.LastWriteTimeUtc.ToString('HH:mm:ss'))" }
+      Get-Content upgrade-new.log -Tail 40 -ErrorAction SilentlyContinue
+      Get-Content (Join-Path $data 'launcher.log'), (Join-Path $data 'tray.log') -Tail 30 -ErrorAction SilentlyContinue
+      throw "$why $($when): $m"
+    }
+  }
+}
 function AppVersion([string] $js) { if ($js -match 'APP_VERSION = "([^"]+)"') { $Matches[1] } else { '' } }
 
 # A clean start: no orOS, no data, no Run value from the tests before.
@@ -70,6 +83,7 @@ foreach ($m in $marks) {
   New-Item -ItemType Directory -Force (Split-Path $m) | Out-Null
   Set-Content -NoNewline $m "kept from orOS $oldVer"
 }
+Test-Marks 'right after writing them'
 $noAuto = Get-Content (Join-Path $data 'no-auto-update') -Raw
 
 # The new setup, with the automatic update's own arguments.
@@ -78,6 +92,8 @@ $noAuto = Get-Content (Join-Path $data 'no-auto-update') -Raw
 $p = Start-Process $Setup -ArgumentList '/SILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/CURRENTUSER', '/RELAUNCH=tray', '/LOG=upgrade-new.log' -PassThru
 if (-not $p.WaitForExit(600000)) { Get-Content upgrade-new.log -Tail 30 -ErrorAction SilentlyContinue; throw 'the new setup did not finish in 10 minutes' }
 if ($p.ExitCode) { Get-Content upgrade-new.log -Tail 30; throw "the new setup over $oldVer exited with $($p.ExitCode)" }
+
+Test-Marks 'by the setup'
 
 # The tray it started again serves the new orOS.
 Wait-Serves 'the tray after the upgrade'
@@ -88,10 +104,7 @@ $bundled = AppVersion (Get-Content (Join-Path $app 'app\shell.js') -Raw)
 if (-not $served -or $served -ne $bundled) { throw "serves orOS $served, the new setup carries $bundled" }
 Write-Host "ok: the tray came back and serves the new orOS ($served)"
 
-foreach ($m in $marks) {
-  if (-not (Test-Path $m)) { throw "lost in the upgrade: $m" }
-  if ((Get-Content $m -Raw) -ne "kept from orOS $oldVer") { throw "changed in the upgrade: $m" }
-}
+Test-Marks 'after the new orOS started'
 Write-Host 'ok: the data folder and the browser profile were kept'
 
 if ((Get-Content (Join-Path $data 'no-auto-update') -Raw -ErrorAction SilentlyContinue) -ne $noAuto) { throw 'the upgrade turned automatic updates back on' }
