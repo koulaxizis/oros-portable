@@ -45,7 +45,15 @@ if [ -e "$ROOT/out/orOS-Portable/bridge" ]; then
   before="$(sha256sum "$b")"
   "$b" --update > /tmp/bridge-update.log 2>&1 || true
   cat /tmp/bridge-update.log
-  grep -Eq "is up to date|orOS updates this copy" /tmp/bridge-update.log
+  # The bridge asks the GitHub API without a token (it has none on a
+  # user's computer), so a shared CI runner can hit the anonymous rate
+  # limit (HTTP 403/429): then the answer is unknown, not wrong, and only
+  # the check below (the file was not replaced) can be made.
+  if grep -Eq "Could not ask for the latest release: HTTP (403|429)" /tmp/bridge-update.log; then
+    echo "::warning::GitHub API rate limit: the bridge's update answer was not checked this time"
+  else
+    grep -Eq "is up to date|orOS updates this copy" /tmp/bridge-update.log
+  fi
   [ "$(sha256sum "$b")" = "$before" ]
   bhome="$(mktemp -d)"
   HOME="$bhome" "$b" --bundled --port 0 --code-file "$bhome/code" > "$bhome/bridge.log" 2>&1 &
