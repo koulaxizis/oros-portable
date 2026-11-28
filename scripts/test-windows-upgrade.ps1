@@ -81,9 +81,16 @@ if (-not (Test-Path (Join-Path $data 'launcher.log'))) { throw "orOS $oldVer wro
 $marks = @((Join-Path $data 'upgrade-marker.txt'), (Join-Path $data 'profile\Default\upgrade-marker.txt'))
 foreach ($m in $marks) {
   New-Item -ItemType Directory -Force (Split-Path $m) | Out-Null
-  Set-Content -NoNewline $m "kept from orOS $oldVer"
+  [IO.File]::WriteAllText($m, "kept from orOS $oldVer")
+  if (-not [IO.File]::Exists($m)) { throw "could not write $m" }
 }
-Test-Marks 'right after writing them'
+Start-Sleep 3
+if (-not (Test-Path $marks[0]) -or -not (Test-Path $marks[1])) {
+  # something on this computer removes files from the data folder: show who runs there
+  Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*orOS*' -or $_.ExecutablePath -like '*orOS*' } |
+    ForEach-Object { "  $($_.ProcessId) $($_.Name): $($_.CommandLine)" }
+}
+Test-Marks 'three seconds after writing them'
 $noAuto = Get-Content (Join-Path $data 'no-auto-update') -Raw
 
 # The new setup, with the automatic update's own arguments.
