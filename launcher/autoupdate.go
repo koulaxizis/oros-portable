@@ -17,17 +17,22 @@ import (
 	"time"
 )
 
-// Automatic updates of an installed orOS (the portable edition keeps its
-// manual "update" command). Two parts:
+// Automatic updates. Two parts:
 //
-//   - the orOS web app follows koulaxizis/oros main: a new commit is
-//     downloaded in the background into app.next and swapped in at the next
-//     start, never under a running window;
-//   - the program itself (launcher + browser) follows the releases of this
-//     repo: the Windows setup and the AppImage are downloaded in the
-//     background and checked against their .sha256 files; the setup runs
-//     silently at the next start, the AppImage replaces itself. Other
-//     installs (.deb) get a message with the download page.
+//   - the orOS web app follows koulaxizis/oros main, in every form: the
+//     installed apps, the portable stick and orOS USB (with a persistence
+//     partition; its session sets OROS_APP_AUTO_UPDATE=1). A new commit
+//     is downloaded in the background into app.next and swapped in at the
+//     next start, never under a running window (Chris 2026-11-28: orOS USB
+//     ran the orOS of its 11-18 image for ten days and missed the newer
+//     settings the other devices synced);
+//   - the program itself (launcher + browser) of an installed copy follows
+//     the releases of this repo: the Windows setup and the AppImage are
+//     downloaded in the background and checked against their .sha256
+//     files; the setup runs silently at the next start, the AppImage
+//     replaces itself. Other installs (.deb) get a message with the
+//     download page. A stick's program changes only with a new stick
+//     release (and on orOS USB with a system update).
 //
 // Checks run at most every checkEvery. A file named "no-auto-update" in the
 // data folder, or OROS_NO_AUTO_UPDATE, turns all of it off.
@@ -41,12 +46,31 @@ const checkEvery = 6 * time.Hour
 
 var httpClient = &http.Client{Timeout: 10 * time.Minute}
 
+// autoUpdatesOn: the program of an installed release build updates itself.
 func autoUpdatesOn(lay layout) bool {
 	if !lay.installed || os.Getenv("OROS_NO_AUTO_UPDATE") != "" || strings.Contains(version, "-") {
 		return false // test builds ("0.0.0-<sha>") never update themselves
 	}
 	_, err := os.Stat(filepath.Join(lay.data, "no-auto-update"))
 	return err != nil
+}
+
+// appAutoUpdatesOn: the orOS web app updates itself. Installed copies as
+// above; a portable release build too; orOS USB (launcher version
+// "usb-<image>") only when its session asks with OROS_APP_AUTO_UPDATE=1,
+// which it does with a persistence partition only (without one the home
+// folder is in memory and every start would download orOS again).
+func appAutoUpdatesOn(lay layout) bool {
+	if lay.installed {
+		return autoUpdatesOn(lay)
+	}
+	if os.Getenv("OROS_NO_AUTO_UPDATE") != "" {
+		return false
+	}
+	if _, err := os.Stat(filepath.Join(lay.data, "no-auto-update")); err == nil {
+		return false
+	}
+	return os.Getenv("OROS_APP_AUTO_UPDATE") == "1" || !strings.Contains(version, "-")
 }
 
 // beforeStart applies what a previous run downloaded. It returns true when
@@ -74,12 +98,15 @@ func beforeStart(lay layout, tray bool) bool {
 
 // checkUpdatesLater runs the background checks while orOS is open.
 func checkUpdatesLater(lay layout) {
-	if !autoUpdatesOn(lay) || !dueForCheck(lay) {
+	if !appAutoUpdatesOn(lay) || !dueForCheck(lay) {
 		return
 	}
 	go func() {
 		appErr := withRetries("app update", func() error { return checkAppUpdate(lay) })
-		progErr := withRetries("program update", func() error { return checkProgramUpdate(lay) })
+		var progErr error
+		if autoUpdatesOn(lay) {
+			progErr = withRetries("program update", func() error { return checkProgramUpdate(lay) })
+		}
 		noteCheck(lay, appErr, progErr)
 	}()
 }
@@ -180,6 +207,13 @@ func applyStagedApp(lay layout) {
 		return
 	}
 	ver := appVersion(next)
+	if cur := appVersion(lay.appDir()); compareVersions(ver, cur) < 0 {
+		// Never back to an older orOS (a stick copied back from an
+		// old backup, a staged copy left over from before an update).
+		_ = os.RemoveAll(next)
+		updateLog(lay, "orOS "+ver+" was not applied: "+cur+" is newer")
+		return
+	}
 	if err := swapApp(lay.updates, next); err != nil {
 		log.Printf("applying the downloaded orOS: %v", err)
 		updateLog(lay, "applying orOS "+ver+" failed: "+err.Error())
@@ -187,6 +221,10 @@ func applyStagedApp(lay layout) {
 	}
 	updateLog(lay, "orOS "+ver+" is now in use")
 }
+
+// refusedFile remembers a commit whose orOS was older than the one in use,
+// so the next checks do not download it again.
+const refusedFile = "app.refused"
 
 func checkAppUpdate(lay layout) error {
 	latest, err := latestCommit()
@@ -196,10 +234,24 @@ func checkAppUpdate(lay layout) error {
 	if latest == appCommit(lay.appDir()) || latest == appCommit(stagedAppDir(lay)) {
 		return nil
 	}
-	tmp := stagedAppDir(lay) + ".tmp"
-	if err := fetchApp(lay.updates, tmp); err != nil {
+	refused := filepath.Join(lay.updates, refusedFile)
+	if b, _ := os.ReadFile(refused); strings.TrimSpace(string(b)) == latest {
+		return nil
+	}
+	if err := os.MkdirAll(lay.updates, 0o755); err != nil {
 		return err
 	}
+	tmp := stagedAppDir(lay) + ".tmp"
+	if err := fetchApp(lay.updates, tmp, latest); err != nil {
+		return err
+	}
+	if ver, cur := appVersion(tmp), appVersion(lay.appDir()); compareVersions(ver, cur) < 0 {
+		_ = os.RemoveAll(tmp)
+		_ = os.WriteFile(refused, []byte(latest+"\n"), 0o644)
+		updateLog(lay, "orOS "+ver+" ("+shortSHA(latest)+") is older than "+cur+" in use; kept "+cur)
+		return nil
+	}
+	_ = os.Remove(refused)
 	_ = os.RemoveAll(stagedAppDir(lay))
 	if err := os.Rename(tmp, stagedAppDir(lay)); err != nil {
 		return err

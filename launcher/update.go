@@ -13,8 +13,18 @@ import (
 	"time"
 )
 
-// updateURL is a variable so tests can point it at a local server.
-var updateURL = "https://github.com/koulaxizis/oros/archive/refs/heads/main.zip"
+// updateURL and archiveURL are variables so tests can point them at a
+// local server. archiveURL (%s is the commit) is what every update uses
+// when it knows the commit GitHub named as newest: the archive of that
+// exact commit, whose zip comment must then name the same commit
+// (fetchApp). updateURL (main) is left for an update that could not ask.
+var (
+	updateURL  = "https://github.com/koulaxizis/oros/archive/refs/heads/main.zip"
+	archiveURL = "https://github.com/koulaxizis/oros/archive/%s.zip"
+)
+
+// maxAppBytes bounds what one archive may unpack to (orOS is about 200 MB).
+const maxAppBytes = 1 << 30
 
 // commitFile holds the orOS commit an app folder was built from. GitHub
 // puts that commit in the comment of its archives.
@@ -25,20 +35,24 @@ var skipDirs = map[string]bool{
 	".github": true, "android": true, "relay": true, "extension": true, "tests": true,
 }
 
-// update downloads the latest orOS, unpacks it next to app/ and swaps the
-// folders, keeping the previous version as app.old. The service worker
-// notices the new sw.js on the next start and refreshes its cache.
-func update(root string) error {
+// update downloads orOS (the given commit, or main when commit is ""),
+// unpacks it next to app/ and swaps the folders, keeping the previous
+// version as app.old. The service worker notices the new sw.js on the
+// next start and refreshes its cache.
+func update(root, commit string) error {
 	next := filepath.Join(root, "app.new")
-	if err := fetchApp(root, next); err != nil {
+	if err := fetchApp(root, next, commit); err != nil {
 		return err
 	}
 	return swapApp(root, next)
 }
 
-// fetchApp downloads the latest orOS and unpacks it into dest, replacing
-// whatever was there.
-func fetchApp(root, dest string) error {
+// fetchApp downloads orOS and unpacks it into dest, replacing whatever was
+// there. With a commit it downloads that commit's archive and keeps it
+// only when the archive names the same commit; without one, main.
+// Nothing in it is ever run by the launcher: it holds the web app the
+// browser shows, the same files useoros.online serves.
+func fetchApp(root, dest, commit string) error {
 	tmp, err := os.CreateTemp(root, "oros-update-*.zip")
 	if err != nil {
 		return err
@@ -46,9 +60,16 @@ func fetchApp(root, dest string) error {
 	defer os.Remove(tmp.Name())
 	defer tmp.Close()
 
-	log.Printf("downloading %s", updateURL)
+	src := updateURL
+	if commit != "" {
+		if !isCommit(commit) {
+			return errors.New("not a commit: " + commit)
+		}
+		src = fmt.Sprintf(archiveURL, commit)
+	}
+	log.Printf("downloading %s", src)
 	c := http.Client{Timeout: 10 * time.Minute}
-	r, err := c.Get(updateURL)
+	r, err := c.Get(src)
 	if err != nil {
 		return err
 	}
@@ -65,6 +86,10 @@ func fetchApp(root, dest string) error {
 		_ = os.RemoveAll(dest)
 		return err
 	}
+	if commit != "" && appCommit(dest) != commit {
+		_ = os.RemoveAll(dest)
+		return fmt.Errorf("the download is not orOS %s", shortSHA(commit))
+	}
 	return nil
 }
 
@@ -78,6 +103,7 @@ func unpackApp(zipPath, dest string) error {
 	if err != nil {
 		return err
 	}
+	var total uint64
 	for _, f := range zr.File {
 		// GitHub archives wrap everything in "<repo>-<branch>/".
 		parts := strings.SplitN(f.Name, "/", 2)
@@ -98,14 +124,19 @@ func unpackApp(zipPath, dest string) error {
 			}
 			continue
 		}
+		// Regular files only, written without execute bits: links and
+		// anything else in the archive are left out.
 		if !f.Mode().IsRegular() {
 			continue
+		}
+		if total += f.UncompressedSize64; total > maxAppBytes {
+			return errors.New("the download is too large for orOS")
 		}
 		if err := writeFile(f, target); err != nil {
 			return err
 		}
 	}
-	if _, err := os.Stat(filepath.Join(destAbs, "index.html")); err != nil {
+	if _, err := os.Stat(filepath.Join(destAbs, "index.html")); err != nil || appVersion(destAbs) == "" {
 		return errors.New("the download does not look like orOS")
 	}
 	if isCommit(zr.Comment) {
@@ -151,7 +182,7 @@ func writeFile(f *zip.File, target string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := io.Copy(dst, src); err != nil {
+	if _, err := io.Copy(dst, io.LimitReader(src, int64(f.UncompressedSize64))); err != nil {
 		dst.Close()
 		return err
 	}

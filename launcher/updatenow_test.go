@@ -32,7 +32,7 @@ func fakeGitHubUpdate(t *testing.T, latest string, latestErr, fetchErr error) *i
 	t.Cleanup(func() { updateLatest, updateFetch = oldL, oldF })
 	n := 0
 	updateLatest = func() (string, error) { return latest, latestErr }
-	updateFetch = func(root string) error {
+	updateFetch = func(root, commit string) error {
 		n++
 		if fetchErr != nil {
 			return fetchErr
