@@ -184,6 +184,10 @@ jobs:
           scripts/build-installers.sh "$VERSION"
       - name: Install test (.deb and AppImage)
         run: scripts/test-installers.sh
+      - name: Upgrade test (.deb and AppImage over the latest release)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/test-installers-upgrade.sh
       - name: Sources
         # Tags only (several GB of downloads); a manual run tests the step.
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
@@ -277,6 +281,11 @@ jobs:
           name: orOS-Setup
           path: setup/orOS-Setup-*
           retention-days: 14
+      - name: Upgrade test (the latest release, then this setup over it)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/test-windows-upgrade.ps1 (Get-ChildItem setup/orOS-Setup-*.exe).FullName
       - name: Add to the release and publish it
         if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
         shell: bash
